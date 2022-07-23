@@ -1,1 +1,1 @@
-twine upload -r testpypi <$PackageName$>-*.whl
+twine upload -r testpypi aioratelimiter-*.whl
