@@ -1,0 +1,1 @@
+twine upload -r testpypi <$PackageName$>-*.whl
