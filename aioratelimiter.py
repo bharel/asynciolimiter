@@ -1,6 +1,7 @@
 import asyncio
 from collections import deque
 from collections.abc import Awaitable
+import functools
 from typing import TypeVar
 from abc import ABC, abstractmethod
 
@@ -31,6 +32,19 @@ class _BaseLimiter(ABC):
     async def breach(self) -> None:
         """Let all calls through"""
         pass
+
+    def wrap(self, coro: Awaitable[_T]) -> Awaitable[_T]:
+        """Wrap a coroutine with the limiter.
+        
+        This will wait for the limiter to be unlocked, and then schedule the
+        coroutine.
+        """
+        @functools.wraps(coro)
+        async def _wrapper() -> None:
+            await self.wait()
+            return await coro
+        return _wrapper()
+        
 
 class _CommonLimiterMixin(_BaseLimiter):
     """Some common attributes a limiter might need.
@@ -110,10 +124,10 @@ class _CommonLimiterMixin(_BaseLimiter):
             waiters = self._waiters
 
         # Error during initialization before _waiters exists.
-        except AttributeError:
+        except AttributeError:  # pragma: no cover
             return
 
-        for fut in waiters:
+        for fut in waiters:  # pragma: no cover
             if not fut.done():
                 fut.cancel()
         
@@ -127,17 +141,6 @@ class _CommonLimiterMixin(_BaseLimiter):
         """
         self.cancel()
         self._cancel_wakeup()
-    
-    def wrap(self, coro: Awaitable[_T]) -> Awaitable[_T]:
-        """Wrap a coroutine with the limiter.
-        
-        This will wait for the limiter to be unlocked, and then schedule the
-        coroutine.
-        """
-        async def _wrapper() -> None:
-            await self.wait()
-            return await coro
-        return _wrapper()
         
 
 class Limiter(_CommonLimiterMixin):
