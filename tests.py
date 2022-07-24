@@ -134,6 +134,7 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin, IsolatedAsyncioTestCase)
         self.assert_call_at(3)
         self.set_time(3)  # So far so good
         self.call_wakeup()
+        self.add_waiter()
         await self.advance_loop()
         self.assert_finished(2)
         self.assert_call_at(6)
