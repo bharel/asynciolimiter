@@ -34,7 +34,7 @@ Install the plugin using `pip install aioratelimiter`.
 
 ## Documentation
 
-Full documentation available at Read the Docs.
+Full documentation soon to be available.
 
 ## License
 
