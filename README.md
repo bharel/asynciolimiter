@@ -2,7 +2,7 @@
 A simple Python AsyncIO rate limiter.
 
 ## Installation
-Install the plugin using `pip install aioratelimiter`.
+Soon to be available.
 
 ## Sample Usage
 
