@@ -23,14 +23,17 @@ def _pop_not_done(waiters: deque[asyncio.Future]) -> asyncio.Future | None:
 
 class _BaseLimiter(ABC):
     @abstractmethod
-    async def wait(self) -> None:
+    async def wait(self) -> None:  # pragma: no cover # ABC
         pass
     @abstractmethod
-    async def cancel(self) -> None:
+    def cancel(self) -> None:  # pragma: no cover # ABC
         pass
     @abstractmethod
-    async def breach(self) -> None:
+    def breach(self) -> None:  # pragma: no cover # ABC
         """Let all calls through"""
+        pass
+    @abstractmethod
+    def reset(self) -> None:  # pragma: no cover # ABC
         pass
 
     def wrap(self, coro: Awaitable[_T]) -> Awaitable[_T]:
@@ -58,7 +61,7 @@ class _CommonLimiterMixin(_BaseLimiter):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._locked = False
-        self._waiters = deque()
+        self._waiters: deque[asyncio.Future] = deque()
         self._wakeup_handle: asyncio.TimerHandle = None
         self._breached = False
 
@@ -112,7 +115,7 @@ class _CommonLimiterMixin(_BaseLimiter):
         self._breached = False
 
     @abstractmethod
-    def _maybe_lock(self):
+    def _maybe_lock(self):  # pragma: no cover # ABC
         pass
 
     def __del__(self):
@@ -124,15 +127,17 @@ class _CommonLimiterMixin(_BaseLimiter):
             waiters = self._waiters
 
         # Error during initialization before _waiters exists.
-        except AttributeError:  # pragma: no cover
+        except AttributeError:  # pragma: no cover # Technically a bug.
             return
-
-        for fut in waiters:  # pragma: no cover
+        
+        any_waiting = False
+        for fut in waiters:  # pragma: no cover # Technically a bug.
             if not fut.done():
                 fut.cancel()
+                any_waiting = True
         
         # Alert for the bug.
-        assert not waiters, "__del__ was called with waiters still waiting"
+        assert not any_waiting, "__del__ was called with waiters still waiting"
     
     def close(self) -> None:
         """Close the limiter.
@@ -167,6 +172,8 @@ class Limiter(_CommonLimiterMixin):
         if at is None:
             at = loop.time() + 1 / self.rate
         self._wakeup_handle = loop.call_at(at, self._wakeup)
+        # Saving next wakeup and not this wakeup to account for fractions
+        # of rate passed. See leftover_time under _wakeup.
         self._next_wakeup = at
     
     
@@ -219,7 +226,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
     """Leaky bucket compliant with bursts."""
     rate: float
     capacity: int
-    def __init__(self, rate: float, capacity: int = 10) -> None:
+    def __init__(self, rate: float, *, capacity: int = 10) -> None:
         """Create a new limiter.
         
         Args:
@@ -262,21 +269,27 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
     def _wakeup(self) -> None:
         loop = asyncio.get_running_loop()
         current_time = loop.time()
-        count, leftover_time = divmod(
+        missed_drains, leftover_time = divmod(
             current_time - self._next_wakeup, 1 / self.rate)
-        count += 1
-        while count and (waiter := _pop_not_done(self._waiters)) is not None:
+        capacity = self.capacity
+        level = self._level
+        # There are no waiters if level is not == capacity.
+        # We can decrease without accounting for current level.
+        level = max(0, level - missed_drains - 1)
+        while level < capacity and (
+                waiter := _pop_not_done(self._waiters)) is not None:
             waiter.set_result(None)
-            count -= 1
+            level +=1
         
         # We have no more waiters
-        if count:
+        if level < capacity:
             self._locked = False
-            level = self._level = max(0, self._level - count)
+            self._level = level
             if level == 0:
                 return
 
-        self._schedule_wakeup(current_time + 1 / self.rate - leftover_time)
+        time_to_next_drain = 1 / self.rate - leftover_time
+        self._schedule_wakeup(at=current_time + time_to_next_drain)
 
 
 class StrictLimiter(_CommonLimiterMixin):
