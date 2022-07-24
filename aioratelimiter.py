@@ -272,10 +272,6 @@ class Limiter(_CommonLimiterMixin):
     max_burst: int = 5
     """In case there's a delay, schedule no more than this many calls at once."""
 
-    rate: float
-    """The rate (calls per second) at which the limiter should let traffic
-    through."""
-
     def __init__(self, rate: float) -> None:
         """Create a new limiter.
 
@@ -287,7 +283,7 @@ class Limiter(_CommonLimiterMixin):
         self._time_between_calls = 1 / rate
 
     @property
-    def rate(self) -> int:
+    def rate(self) -> float:
         """Calls per second at which the limiter should let traffic through."""
         return self._rate
     
@@ -442,7 +438,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self._level = 0
     
     @property
-    def rate(self) -> int:
+    def rate(self) -> float:
         """Calls per second at which the bucket should "drain" or let calls
         through."""
     
