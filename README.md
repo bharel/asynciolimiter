@@ -23,18 +23,18 @@ Install the plugin using `pip install aioratelimiter`.
 
 ## Available Limiter flavors
 
-    - `Limiter`: Limits by requests per second and takes into account CPU heavy
+- `Limiter`: Limits by requests per second and takes into account CPU heavy
     tasks or other delays that can occur while the process is sleeping.
-    - `LeakyBucketLimiter`: Limits by requests per second according to the
+- `LeakyBucketLimiter`: Limits by requests per second according to the
     leaky bucket algorithm. Has a maximum capacity and an initial burst of
     requests.
-    - `StrictLimiter`: Limits by requests per second, without taking CPU or other
+- `StrictLimiter`: Limits by requests per second, without taking CPU or other
     process sleeps into account. There are no bursts and the resulting rate will
     always be a less than the set limit.
 
 ## Documentation
 
-    Full documentation available at Read the Docs.
+Full documentation available at Read the Docs.
 
 ## License
 
