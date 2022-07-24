@@ -346,7 +346,7 @@ class Limiter(_CommonLimiterMixin):
             # More than 1 tick early. Great success.
             # Technically the higher the rate, the more likely the event loop
             # should be late. If we came early on 2 ticks, that's really bad.
-            assert -leftover_time < 1/self.rate, (
+            assert -leftover_time < self._time_between_calls, (
                 f"Event loop is too fast. Woke up {-leftover_time*self.rate} "
                 f"ticks early.")
 
@@ -436,9 +436,27 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             wait() will block until the bucket drips.
         """
         super().__init__()
-        self.rate = rate
+        self._rate = rate
+        self._time_between_calls = 1 / rate
         self.capacity = capacity
         self._level = 0
+    
+    @property
+    def rate(self) -> int:
+        """Calls per second at which the bucket should "drain" or let calls
+        through."""
+    
+        return self._rate
+    
+    @rate.setter
+    def rate(self, value: float) -> None:
+        """Set the rate (calls per second) at which bucket should "drain".
+
+        Args:
+            value: The rate (calls per second) at which bucket should "drain".
+        """
+        self._rate = value
+        self._time_between_calls = 1 / value
 
     def _maybe_lock(self):
         """Increase the level, schedule a drain. Lock when the bucket is full."""
@@ -462,7 +480,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         """
         loop = _loop or _asyncio.get_running_loop()
         if at is None:
-            at = loop.time() + 1 / self.rate
+            at = loop.time() + self._time_between_calls
         self._wakeup_handle = loop.call_at(at, self._wakeup)
         self._next_wakeup = at
 
@@ -491,7 +509,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             # More than 1 tick early. Great success.
             # Technically the higher the rate, the more likely the event loop
             # should be late. If we came early on 2 ticks, that's really bad.
-            assert -leftover_time < 1/self.rate, (
+            assert -leftover_time < self._time_between_calls, (
                 f"Event loop is too fast. Woke up {-leftover_time*self.rate} "
                 f"ticks early.")
 
@@ -501,7 +519,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             # or high event loop load.
             # Check if we overflowed longer than a single call-time.
             missed_drains, leftover_time = divmod(
-                current_time - this_wakeup, 1 / self.rate)
+                current_time - this_wakeup, self._time_between_calls)
 
         capacity = self.capacity
         level = self._level
@@ -520,7 +538,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             if level == 0:
                 return
 
-        time_to_next_drain = 1 / self.rate - leftover_time
+        time_to_next_drain = self._time_between_calls - leftover_time
         self._schedule_wakeup(at=current_time + time_to_next_drain)
 
 
