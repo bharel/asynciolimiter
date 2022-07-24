@@ -6,20 +6,22 @@ Install the plugin using `pip install aioratelimiter`.
 
 ## Sample Usage
 
-    # Limit to 10 requests per 5 second (equiv to 2 requests per second)
-    >>> limiter = aioratelimiter.Limiter(10/5)
-    >>> async def main():
-    ...     await limiter.wait() # Wait for a slot to be available.
-    ...     pass # do stuff
+```python
+# Limit to 10 requests per 5 second (equiv to 2 requests per second)
+>>> limiter = aioratelimiter.Limiter(10/5)
+>>> async def main():
+...     await limiter.wait() # Wait for a slot to be available.
+...     pass # do stuff
 
-    >>> limiter = Limiter(1/3)
-    >>> async def request():
-    ...     await limiter.wait()
-    ...     print("Request")  # Do stuff
-    ...
-    >>> async def main():
-    ...     # Schedule 1 request every 3 seconds.
-    ...     await asyncio.gather(*(request() for _ in range(10)))
+>>> limiter = Limiter(1/3)
+>>> async def request():
+...     await limiter.wait()
+...     print("Request")  # Do stuff
+...
+>>> async def main():
+...     # Schedule 1 request every 3 seconds.
+...     await asyncio.gather(*(request() for _ in range(10)))
+```
 
 ## Available Limiter flavors
 
