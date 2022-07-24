@@ -38,7 +38,7 @@ import functools as _functools
 from typing import TypeVar as _TypeVar
 
 __all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
-__version__ = "0.1.0"
+__version__ = "1.0.0a1"
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
