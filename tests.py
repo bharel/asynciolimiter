@@ -1,6 +1,6 @@
 import asyncio
 from sys import breakpointhook
-from unittest import IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase, skip, skipUnless
 from unittest.mock import patch, Mock, ANY
 from aioratelimiter import Limiter, StrictLimiter, LeakyBucketLimiter
 import aioratelimiter
@@ -104,6 +104,42 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin, IsolatedAsyncioTestCase)
         self.call_wakeup()
         await self.advance_loop()
         self.assert_finished(4)
+    
+    async def test_early_wakeups(self):
+        """Event loop can sometimes wake us too early!
+        
+        Expected behavior is to send it a the current pending request a bit
+        earlier (only a few microseconds usually) but delay the next one but
+        the complementing factor. Should round to a correct wakeup time.
+        """
+        self.add_waiter()
+        self.add_waiter()
+        await self.advance_loop()
+        self.assert_call_at(3)
+        self.set_time(2)  # Beh.
+        self.call_wakeup()  # Wakey wakey!
+        await self.advance_loop()
+        self.assert_finished(2)
+        self.assert_call_at(6)
+    
+    @skipUnless(__debug__, "Debug mode only")
+    async def test_too_early_wakeups(self):
+        """When the wakeup is way too early. Should never happen.
+        
+        Fails only on __debug__. Attempts to recover in real time.
+        """
+        self.add_waiter()
+        self.add_waiter()
+        await self.advance_loop()
+        self.assert_call_at(3)
+        self.set_time(3)  # So far so good
+        self.call_wakeup()
+        await self.advance_loop()
+        self.assert_finished(2)
+        self.assert_call_at(6)
+        self.set_time(2)  # Time just went backwards.
+        with self.assertRaises(AssertionError):
+            self.call_wakeup()
     
     async def test_wait_multiple_max_burst(self):
         self.limiter.max_burst = 3
@@ -359,3 +395,38 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         await self.advance_loop()
         self.assert_call_at(3*2)
 
+    async def test_early_wakeups(self):
+        """Event loop can sometimes wake us too early!
+        
+        Expected behavior is to drain a bit earlier (only a few microseconds
+        usually) but delay the next one but the complementing factor. Should
+        round to a correct drain time.
+        """
+        self.add_waiter()
+        self.add_waiter()
+        await self.advance_loop()
+        self.assert_call_at(3)
+        self.set_time(2)  # Beh.
+        self.call_wakeup()  # Wakey wakey!
+        await self.advance_loop()
+        self.assert_finished(2)
+        self.assert_call_at(6)
+    
+    @skipUnless(__debug__, "Debug mode only")
+    async def test_too_early_wakeups(self):
+        """When the wakeup is way too early. Should never happen.
+        
+        Fails only on __debug__. Attempts to recover in real time.
+        """
+        self.add_waiter()
+        self.add_waiter()
+        await self.advance_loop()
+        self.assert_call_at(3)
+        self.set_time(3)  # So far so good
+        self.call_wakeup()
+        await self.advance_loop()
+        self.assert_finished(2)
+        self.assert_call_at(6)
+        self.set_time(2)  # Time just went backwards.
+        with self.assertRaises(AssertionError):
+            self.call_wakeup()
