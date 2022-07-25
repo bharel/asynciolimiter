@@ -156,6 +156,7 @@ Implementations
         :async:
 
         Cancel all waiting calls.
+
         This will cancel all currently waiting calls.
         Limiter is reusable afterwards, and new calls will wait as usual.
 
