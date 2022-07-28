@@ -124,7 +124,6 @@ Implementations
 
         
     .. method:: wrap(coro)
-        :async:
 
         Wrap a coroutine with the limiter.
 
@@ -133,7 +132,7 @@ Implementations
         Returns a new coroutine that waits for the limiter to be unlocked, and
         then schedules the original coroutine.
 
-        Equivalent to:
+        Equivalent to::
 
             >>> async def wrapper():
             ...     await limiter.wait()
@@ -141,7 +140,7 @@ Implementations
             ...
             >>> wapper()
         
-        Example use:
+        Example use::
 
             >>> async def foo(number):
             ...     print(number)  # Do stuff
@@ -153,15 +152,29 @@ Implementations
             ...     await asyncio.gather(*map(limiter.wrap, print_numbers))
     
     .. method:: cancel()
-        :async:
 
         Cancel all waiting calls.
 
         This will cancel all currently waiting calls.
         Limiter is reusable afterwards, and new calls will wait as usual.
 
+    .. method:: breach()
 
+        Let all calls through.
+        
+        All waiting calls will be let through, new :meth:`wait` calls will also
+        pass without waiting, until :meth:`reset` is called.
 
+    .. method:: reset()
+
+        Reset the limiter.
+
+        This will cancel all waiting calls, reset all internal timers, and
+        restore the limiter to its initial state.
+        Limiter is reusable afterwards, and the next call will be 
+        immediately scheduled.
+
+        
 
 Indices and tables
 ------------------
