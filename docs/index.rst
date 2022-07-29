@@ -74,8 +74,8 @@ Implementations
     Takes into account CPU heavy tasks or other delays that can occur while
     the process is sleeping.
 
-    Receives *rate* as the calls per second at which the limiter should let
-    traffic through.
+    Receives *rate* as the average calls per second at which the limiter should
+    let traffic through.
 
     Sample usage:
 
@@ -174,7 +174,152 @@ Implementations
         Limiter is reusable afterwards, and the next call will be 
         immediately scheduled.
 
+.. class:: StrictLimiter(rate)
+
+    A stricter version of :class:`Limiter`.
+
+    Limits by a **maximum** number of requests per second.
+    
+    Does not compensate for missed requests, and thus has no bursts.
+
+    Receives *rate* as the max calls per second at which the limiter should let
+    traffic through.
+
+    Sample usage:
+
+    .. code::
         
+        >>> limiter = StrictLimiter(1/2)  # up to 1 call per 2 seconds.
+        >>> async def main():
+        ...     print_numbers = (foo(i) for i in range(10))
+        ...     # This will print the numbers over 20 seconds
+        ...     await asyncio.gather(*map(limiter.wrap, print_numbers))
+
+    Alternative usage:
+
+    .. code::
+
+        >>> limiter = StrictLimiter(5)  # up to 5 calls per second.
+        >>> async def request():
+        ...     await limiter.wait()
+        ...     print("Request")  # Do stuff
+        ...
+        >>> async def main():
+        ...     # Schedule 5 requests per second.
+        ...     await asyncio.gather(*(request() for _ in range(10)))
+    
+    Has the following attributes:
+
+    .. attribute:: rate
+
+        The maximum rate (calls per second) at which the limiter should let
+        traffic through.
+
+    Has the following methods:
+
+    .. method:: wait()
+        :async:
+
+        See :meth:`Limiter.wait`.
+
+        
+    .. method:: wrap(coro)
+
+        See :meth:`Limiter.wrap`.
+    
+    .. method:: cancel()
+
+        See :meth:`Limiter.cancel`.
+
+    .. method:: breach()
+
+        See :meth:`Limiter.breach`.
+
+    .. method:: reset()
+
+        See :meth:`Limiter.reset`.
+
+
+.. class:: LeakyBucketLimiter(rate, *, capacity = 10)
+
+    Leaky bucket compliant limiter with bursts.
+
+    Limits by requests per second according to the leaky bucket algorithm.
+    Has a maximum capacity and an initial burst of requests.
+
+    Receives *rate* as the calls per second at which the bucket should "drain"
+    or let calls through.
+    
+    *capacity* is the maximum number of requests that can pass through until
+    the bucket is full. Defaults to 10.
+
+    Sample usage:
+
+    .. code::
+        
+        >>> limiter = LeakyBucketLimiter(1, capacity=5)
+        >>> async def main():
+        ...     print_numbers = (foo(i) for i in range(10))
+        ...     # This will print the numbers 0,1,2,3,4 immidiately, then
+        ...     # wait for a second before each remaining number.
+        ...     await asyncio.gather(*map(limiter.wrap, print_numbers))
+        ...     # After 5 seconds of inactivity, bucket will drain back to empty.
+
+    Alternative usage:
+
+    .. code::
+
+        >>> limiter = LeakyBucketLimiter(5)  # capacity is 10 by default.
+        >>> async def request():
+        ...     await limiter.wait()
+        ...     print("Request")  # Do stuff
+        ...
+        >>> async def main():
+        ...     # First 10 requests would be immediate, then schedule 5
+        ...     # requests per second. Total time - 2 seconds.
+        ...     await asyncio.gather(*(request() for _ in range(20)))
+    
+    Has the following attributes:
+
+    .. attribute:: rate
+
+        The maximum rate (calls per second) at which the limiter should let
+        traffic through.
+    
+    .. attribute:: capacity
+        
+        The maximum number of requests that can pass through until the bucket is
+        full. Defaults to 10.
+
+    Has the following methods:
+
+    .. method:: wait()
+        :async:
+
+        See :meth:`Limiter.wait`.
+
+        
+    .. method:: wrap(coro)
+
+        See :meth:`Limiter.wrap`.
+    
+    .. method:: cancel()
+
+        See :meth:`Limiter.cancel`.
+
+        Does not drain the bucket.
+
+    .. method:: breach()
+
+        See :meth:`Limiter.breach`.
+
+    .. method:: reset()
+
+        See :meth:`Limiter.reset`.
+
+        Also drains the bucket to empty.
+
+
 
 Indices and tables
 ------------------

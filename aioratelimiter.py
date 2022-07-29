@@ -281,6 +281,9 @@ class Limiter(_CommonLimiterMixin):
         super().__init__()
         self._rate = rate
         self._time_between_calls = 1 / rate
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}(rate={self._rate})"
 
     @property
     def rate(self) -> float:
@@ -404,7 +407,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         ...
         >>> async def main():
         ...     # First 10 requests would be immediate, then schedule 5
-        ...     # remaining requests per second.
+        ...     # requests per second.
         ...     await asyncio.gather(*(request() for _ in range(20)))
 
     Attributes:
@@ -436,6 +439,10 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self._time_between_calls = 1 / rate
         self.capacity = capacity
         self._level = 0
+
+    def __repr__(self):
+        return (f"{self.__class__.__name__}(rate={self._rate}, "
+                f"capacity={self.capacity})")
     
     @property
     def rate(self) -> float:
@@ -561,6 +568,9 @@ class StrictLimiter(_CommonLimiterMixin):
         """
         super().__init__()
         self.rate = rate
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}(rate={self._rate})"
 
     def _maybe_lock(self):
         """Lock the limiter, schedule a wakeup."""
