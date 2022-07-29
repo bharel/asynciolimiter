@@ -64,6 +64,14 @@ Alternatively, you can wrap coroutines using :meth:`~Limiter.wrap`:
     asyncio.run(main())
 
 ****************
+Installation
+****************
+
+Install from `PyPi <https://pypi.org/project/aioratelimiter/>`_:
+
+    ``pip install asyncioratelimiter``
+
+****************
 Implementations
 ****************
 
@@ -318,6 +326,12 @@ Implementations
         See :meth:`Limiter.reset`.
 
         Also drains the bucket to empty.
+
+Issues, Feature requests & Contributions
+----------------------------------------
+
+See our `Github <https://github.com/bharel/aioratelimiter>`_ :-)
+
 
 
 
