@@ -98,7 +98,7 @@ It is best explained using a timeline:
 .. image:: _static/Limiter.svg
 
 Limiter is accurate and does not cause any burst unless delayed. It does not
-save any "empty" ticks for later. For most cases it's ideal, but will not
+save any "empty" ticks for later. For most cases it's ideal, but will
 be slower for sporadic bursts.
 
 .. image:: _static/StrictLimiter.svg
