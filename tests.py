@@ -2,8 +2,8 @@ import asyncio
 from sys import breakpointhook
 from unittest import IsolatedAsyncioTestCase, skip, skipUnless
 from unittest.mock import patch, Mock, ANY
-from aioratelimiter import Limiter, StrictLimiter, LeakyBucketLimiter
-import aioratelimiter
+from asynciolimiter import Limiter, StrictLimiter, LeakyBucketLimiter
+import asynciolimiter
 from types import SimpleNamespace
 
 
@@ -30,7 +30,7 @@ class PatchLoopMixin:
         return self.get_scheduled_functions()[-1]
 
 class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
-    limiter: aioratelimiter._BaseLimiter
+    limiter: asynciolimiter._BaseLimiter
 
     def setUp(self) -> None:
         self.waiters_finished = 0
