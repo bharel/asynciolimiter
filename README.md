@@ -1,5 +1,5 @@
 # asynciolimiter
-A simple Python AsyncIO rate limiter.
+A simple yet efficient Python AsyncIO rate limiter.
 
 [![GitHub branch checks state](https://img.shields.io/github/checks-status/bharel/asynciolimiter/master)](https://github.com/bharel/asynciolimiter/actions)
 [![PyPI](https://img.shields.io/pypi/v/asynciolimiter)](https://pypi.org/project/asynciolimiter/)
