@@ -62,6 +62,6 @@ jobs:
         with:
           files: 'asynciolimiter-*.whl'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish on Test PyPi
+      - name: Publish on Production PyPi
         run: twine upload -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} asynciolimiter-*.whl
 
