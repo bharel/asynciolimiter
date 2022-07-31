@@ -1,4 +1,5 @@
 import asyncio
+from typing import Awaitable, List
 from unittest import IsolatedAsyncioTestCase, skipUnless
 from unittest.mock import patch, Mock, ANY
 from asynciolimiter import Limiter, StrictLimiter, LeakyBucketLimiter
@@ -6,7 +7,7 @@ import asynciolimiter
 from types import SimpleNamespace
 
 
-class PatchLoopMixin:
+class PatchLoopMixin(IsolatedAsyncioTestCase):
     """Patch the loop scheduling functions"""
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
@@ -34,7 +35,7 @@ class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         self.waiters_finished = 0
-        self.waiters = []
+        self.waiters: List[Awaitable] = []
         return super().setUp()
 
     def call_wakeup(self):

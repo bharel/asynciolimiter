@@ -35,8 +35,10 @@ import asyncio as _asyncio
 from collections import deque as _deque
 from collections.abc import Awaitable as _Awaitable
 import functools as _functools
-# Optional are required for supporting python versions 3.8, 3.9
-from typing import TypeVar as _TypeVar, Optional as _Optional
+# Deque, Optional are required for supporting python versions 3.8, 3.9
+from typing import (TypeVar as _TypeVar, Deque as _Deque,
+                    Optional as _Optional, cast as _cast,
+                    Callable as _Callable)
 
 __all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
 __version__ = "1.0.0a1"
@@ -49,7 +51,7 @@ _T = _TypeVar('_T')
 
 
 def _pop_pending(
-        futures: _deque[_asyncio.Future]) -> _Optional[_asyncio.Future]:
+        futures: _Deque[_asyncio.Future]) -> _Optional[_asyncio.Future]:
     """Pop until the first pending future is found and return it.
 
     If all futures are done, or deque is empty, return None.
@@ -138,11 +140,12 @@ class _BaseLimiter(_ABC):
         Returns:
             The wrapped coroutine.
         """
-        @_functools.wraps(coro)
-        async def _wrapper() -> None:
+        async def _wrapper() -> _T:
             await self.wait()
             return await coro
-        return _wrapper()
+        wrapper = _wrapper()
+        _functools.update_wrapper(_wrapper, _cast(_Callable, coro))
+        return wrapper
 
 
 class _CommonLimiterMixin(_BaseLimiter):
@@ -162,8 +165,8 @@ class _CommonLimiterMixin(_BaseLimiter):
         """
         super().__init__(*args, **kwargs)
         self._locked = False
-        self._waiters: _deque[_asyncio.Future] = _deque()
-        self._wakeup_handle: _asyncio.TimerHandle = None
+        self._waiters: _Deque[_asyncio.Future] = _deque()
+        self._wakeup_handle: _Optional[_asyncio.TimerHandle] = None
         self._breached = False
 
     async def wait(self) -> None:
@@ -343,7 +346,7 @@ class Limiter(_CommonLimiterMixin):
         current_time = loop.time()
         # We woke up early. Damn event loop!
         if current_time < this_wakeup:
-            missed_wakeups = 0
+            missed_wakeups = 0.0
             # We have a negative leftover bois. Increase the next sleep!
             leftover_time = current_time - this_wakeup
             # More than 1 tick early. Great success.
@@ -421,10 +424,6 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         rate: The rate (calls per second) at which the bucket should "drain" or
         let calls through.
     """
-
-    rate: float
-    """The rate (calls per second) at which the bucket should "drain" or
-    let calls through."""
 
     capacity: int
     """The maximum number of requests that can pass through until the bucket is
@@ -513,7 +512,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
 
         # We woke up early. Damn event loop!
         if current_time < this_wakeup:
-            missed_drains = 0
+            missed_drains = 0.0
             # We have a negative leftover bois. Increase the next sleep!
             leftover_time = current_time - this_wakeup
             # More than 1 tick early. Great success.
@@ -535,7 +534,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         level = self._level
         # There are no waiters if level is not == capacity.
         # We can decrease without accounting for current level.
-        level = max(0, level - missed_drains - 1)
+        assert missed_drains.is_integer()
+        level = max(0, level - int(missed_drains) - 1)
         while level < capacity and (
                 waiter := _pop_pending(self._waiters)) is not None:
             waiter.set_result(None)
