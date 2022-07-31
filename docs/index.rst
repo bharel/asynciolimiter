@@ -88,6 +88,32 @@ Install from `PyPi <https://pypi.org/project/asynciolimiter/>`_:
     ``pip install asynciolimiter``
 
 ****************
+Comparisons
+****************
+
+What is the difference between the 3 algorithms?
+
+It is best explained using a timeline:
+
+.. image:: _static/Limiter.svg
+
+Limiter is accurate and does not cause any burst unless delayed. It does not
+save any "empty" ticks for later. For most cases it's ideal, but will not
+be slower for sporadic bursts.
+
+.. image:: _static/StrictLimiter.svg
+
+StrictLimiter is good for when the endpoints are strictly limited, and you're
+unable to send more than X requests per second in any given timeframe.
+
+.. image:: _static/LeakyBucket.svg
+
+LeakyBucket works well for sporadic bursts of data should the endpoint
+support it, yet still limit the requests up to a certain maximum over
+a longer timeframe. Setting the capacity to a reasonable value is important
+to ensure smooth traffic.
+
+****************
 Implementations
 ****************
 
