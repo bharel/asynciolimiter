@@ -10,9 +10,9 @@ This module provides different rate limiters for asyncio.
     - `LeakyBucketLimiter`: Limits by requests per second according to the
     leaky bucket algorithm. Has a maximum capacity and an initial burst of
     requests.
-    - `StrictLimiter`: Limits by requests per second, without taking CPU or other
-    process sleeps into account. There are no bursts and the resulting rate will
-    always be a less than the set limit.
+    - `StrictLimiter`: Limits by requests per second, without taking CPU or
+    other process sleeps into account. There are no bursts and the resulting
+    rate will always be a less than the set limit.
 
 If you don't know which of these to choose, go for the regular Limiter.
 
@@ -35,7 +35,8 @@ import asyncio as _asyncio
 from collections import deque as _deque
 from collections.abc import Awaitable as _Awaitable
 import functools as _functools
-from typing import TypeVar as _TypeVar
+# Optional are required for supporting python versions 3.8, 3.9
+from typing import TypeVar as _TypeVar, Optional as _Optional
 
 __all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
 __version__ = "1.0.0a1"
@@ -47,7 +48,8 @@ __copyright__ = "Copyright (c) 2022 Bar Harel"
 _T = _TypeVar('_T')
 
 
-def _pop_pending(futures: _deque[_asyncio.Future]) -> _asyncio.Future | None:
+def _pop_pending(
+        futures: _deque[_asyncio.Future]) -> _Optional[_asyncio.Future]:
     """Pop until the first pending future is found and return it.
 
     If all futures are done, or deque is empty, return None.
@@ -71,7 +73,7 @@ class _BaseLimiter(_ABC):
     async def wait(self) -> None:  # pragma: no cover # ABC
         """Wait for the limiter to let us through.
 
-        Main function of the limiter. Blocks if limit has been reached, and 
+        Main function of the limiter. Blocks if limit has been reached, and
         lets us through once time passes.
         """
         pass
@@ -88,7 +90,7 @@ class _BaseLimiter(_ABC):
     @_abstractmethod
     def breach(self) -> None:  # pragma: no cover # ABC
         """Let all calls through.
-        
+
         All waiting calls will be let through, new `.wait()` calls will also
         pass without waiting, until `.reset()` is called.
         """
@@ -100,7 +102,7 @@ class _BaseLimiter(_ABC):
 
         This will cancel all waiting calls, reset all internal timers, and
         restore the limiter to its initial state.
-        Limiter is reusable afterwards, and the next call will be 
+        Limiter is reusable afterwards, and the next call will be
         immediately scheduled.
         """
         pass
@@ -118,7 +120,7 @@ class _BaseLimiter(_ABC):
             ...     return await coro
             ...
             >>> wapper()
-        
+
         Example use:
 
             >>> async def foo(number):
@@ -132,7 +134,7 @@ class _BaseLimiter(_ABC):
 
         Args:
             coro: The coroutine or awaitable to wrap.
-        
+
         Returns:
             The wrapped coroutine.
         """
@@ -155,7 +157,7 @@ class _CommonLimiterMixin(_BaseLimiter):
 
     def __init__(self, *args, **kwargs) -> None:
         """Initialize the limiter.
-        
+
         Subclasses must call `super()`.
         """
         super().__init__(*args, **kwargs)
@@ -203,7 +205,7 @@ class _CommonLimiterMixin(_BaseLimiter):
     @_abstractmethod
     def _maybe_lock(self) -> None:  # pragma: no cover # ABC
         """Hook called after a request was allowed to pass without waiting.
-        
+
         Limiter was unlocked, and we can choose to lock it.
         Subclasses must implement this.
         """
@@ -242,7 +244,7 @@ class _CommonLimiterMixin(_BaseLimiter):
 
 class Limiter(_CommonLimiterMixin):
     """Regular limiter, with a max burst compensating for delayed schedule.
-    
+
     Takes into account CPU heavy tasks or other delays that can occur while
     the process is sleeping.
 
@@ -266,11 +268,12 @@ class Limiter(_CommonLimiterMixin):
     Attributes:
         max_burst: In case there's a delay, schedule no more than this many
         calls at once.
-        rate: The rate (calls per second) at which the limiter should let traffic
-        through.
+        rate: The rate (calls per second) at which the limiter should let
+        traffic through.
     """
     max_burst: int = 5
-    """In case there's a delay, schedule no more than this many calls at once."""
+    """In case there's a delay, schedule no more than this many calls at once.
+    """
 
     def __init__(self, rate: float) -> None:
         """Create a new limiter.
@@ -281,7 +284,7 @@ class Limiter(_CommonLimiterMixin):
         super().__init__()
         self._rate = rate
         self._time_between_calls = 1 / rate
-    
+
     def __repr__(self):
         return f"{self.__class__.__name__}(rate={self._rate})"
 
@@ -289,7 +292,7 @@ class Limiter(_CommonLimiterMixin):
     def rate(self) -> float:
         """Calls per second at which the limiter should let traffic through."""
         return self._rate
-    
+
     @rate.setter
     def rate(self, value: float) -> None:
         """Set the rate (calls per second) at which calls can pass through.
@@ -305,9 +308,10 @@ class Limiter(_CommonLimiterMixin):
         self._locked = True
         self._schedule_wakeup()
 
-    def _schedule_wakeup(self, at: float | None = None, *, _loop=None) -> None:
+    def _schedule_wakeup(self, at: _Optional[float] = None,
+                         *, _loop=None) -> None:
         """Schedule the next wakeup to be unlocked.
-        
+
         Args:
             at: The time at which to wake up. If None, use the current
             time + 1/rate.
@@ -359,7 +363,7 @@ class Limiter(_CommonLimiterMixin):
 
         # Attempt to wake up only the missed wakeups and ones that were
         # inserted while we missed the original wakeup.
-        to_wakeup = min(int(missed_wakeups)+1, self.max_burst)
+        to_wakeup = min(int(missed_wakeups) + 1, self.max_burst)
 
         while to_wakeup and self._waiters:
             waiter = self._waiters.popleft()
@@ -385,7 +389,7 @@ class Limiter(_CommonLimiterMixin):
 
 class LeakyBucketLimiter(_CommonLimiterMixin):
     """Leaky bucket compliant with bursts.
-    
+
     Limits by requests per second according to the
     leaky bucket algorithm. Has a maximum capacity and an initial burst of
     requests.
@@ -397,7 +401,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         ...     # This will print the numbers 0,1,2,3,4 immidiately, then
         ...     # wait for a second before each number.
         ...     await asyncio.gather(*map(limiter.wrap, print_numbers))
-        ...     # After 5 seconds of inactivity, bucket will drain back to empty.
+        ...     # After 5 seconds of inactivity, bucket will drain back to
+        ...     # empty.
 
     Alternative usage:
         >>> limiter = LeakyBucketLimiter(5)  # capacity is 10 by default.
@@ -413,14 +418,14 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
     Attributes:
         capacity: The maximum number of requests that can pass through until
         the bucket is full. Defaults to 10.
-        rate: The rate (calls per second) at which the bucket should "drain" or 
+        rate: The rate (calls per second) at which the bucket should "drain" or
         let calls through.
     """
-    
+
     rate: float
-    """The rate (calls per second) at which the bucket should "drain" or 
+    """The rate (calls per second) at which the bucket should "drain" or
     let calls through."""
-    
+
     capacity: int
     """The maximum number of requests that can pass through until the bucket is
     full."""
@@ -443,14 +448,14 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
     def __repr__(self):
         return (f"{self.__class__.__name__}(rate={self._rate}, "
                 f"capacity={self.capacity})")
-    
+
     @property
     def rate(self) -> float:
         """Calls per second at which the bucket should "drain" or let calls
         through."""
-    
+
         return self._rate
-    
+
     @rate.setter
     def rate(self, value: float) -> None:
         """Set the rate (calls per second) at which bucket should "drain".
@@ -462,7 +467,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self._time_between_calls = 1 / value
 
     def _maybe_lock(self):
-        """Increase the level, schedule a drain. Lock when the bucket is full."""
+        """Increase the level, schedule a drain. Lock when the bucket is full.
+        """
         self._level += 1
 
         if self._wakeup_handle is None:
@@ -472,9 +478,10 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             self._locked = True
             return
 
-    def _schedule_wakeup(self, at: float | None = None, *, _loop=None) -> None:
+    def _schedule_wakeup(self, at: _Optional[float] = None,
+                         *, _loop=None) -> None:
         """Schedule the next wakeup to be unlocked.
-        
+
         Args:
             at: The time at which to wake up. If None, use the current
             time + 1/rate.
@@ -555,7 +562,7 @@ class StrictLimiter(_CommonLimiterMixin):
         rate: The maximum rate (calls per second) at which calls can pass
         through.
     """
-    
+
     rate: float
     """The maximum rate (calls per second) at which calls can pass through."""
 
@@ -568,7 +575,7 @@ class StrictLimiter(_CommonLimiterMixin):
         """
         super().__init__()
         self.rate = rate
-    
+
     def __repr__(self):
         return f"{self.__class__.__name__}(rate={self._rate})"
 
