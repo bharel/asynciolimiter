@@ -33,12 +33,11 @@ For more info, see the documentation for each limiter.
 from abc import ABC as _ABC, abstractmethod as _abstractmethod
 import asyncio as _asyncio
 from collections import deque as _deque
-from collections.abc import Awaitable as _Awaitable
 import functools as _functools
 # Deque, Optional are required for supporting python versions 3.8, 3.9
 from typing import (TypeVar as _TypeVar, Deque as _Deque,
                     Optional as _Optional, cast as _cast,
-                    Callable as _Callable)
+                    Callable as _Callable, Awaitable as _Awaitable)
 
 __all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
 __version__ = "1.0.0a1"
