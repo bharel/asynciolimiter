@@ -33,7 +33,7 @@ A simple Python AsyncIO rate limiter.
 - `Limiter`: Limits by requests per second and takes into account CPU heavy
     tasks or other delays that can occur while the process is sleeping.
 - `LeakyBucketLimiter`: Limits by requests per second according to the
-    leaky bucket algorithm. Has a maximum capacity and an initial burst of
+    [leaky bucket algorithm](https://en.wikipedia.org/wiki/Leaky_bucket). Has a maximum capacity and an initial burst of
     requests.
 - `StrictLimiter`: Limits by requests per second, without taking CPU or other
     process sleeps into account. There are no bursts and the resulting rate will
