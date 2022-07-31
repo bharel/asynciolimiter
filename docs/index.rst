@@ -332,9 +332,6 @@ Issues, Feature requests & Contributions
 
 See our `Github <https://github.com/bharel/asynciolimiter>`_ :-)
 
-
-
-
 Indices and tables
 ------------------
 

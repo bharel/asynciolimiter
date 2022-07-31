@@ -2,9 +2,9 @@ name: Test asynciolimiter
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   lint:
@@ -19,12 +19,17 @@ jobs:
         run: pip install flake8
       - name: Lint using flake8
         run: python -m flake8 asynciolimiter.py tests.py
+      - name: Install mypy
+        run: pip install mypy
+      - name: Lint using mypy
+        run: mypy --ignore-missing-imports asynciolimiter.py tests.py
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.8, 3.9, 3.10]
+        python-version: [3.8, 3.9, "3.10"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
