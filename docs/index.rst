@@ -5,6 +5,22 @@
 AsyncIO Rate Limiter for Python
 ###############################
 
+.. image:: https://img.shields.io/pypi/v/asynciolimiter
+    :alt: PyPI
+    :target: https://pypi.org/project/asynciolimiter/
+.. image:: https://img.shields.io/pypi/pyversions/asynciolimiter
+    :alt: Versions
+    :target: https://pypi.org/project/asynciolimiter/
+.. image:: https://img.shields.io/pypi/l/asynciolimiter
+    :alt: PyPI License
+    :target: https://github.com/bharel/asynciolimiter/blob/master/LICENSE
+.. image:: https://codecov.io/gh/bharel/asynciolimiter/branch/master/graph/badge.svg?token=BJBL909NH3
+    :target: https://codecov.io/gh/bharel/asynciolimiter
+.. image:: https://img.shields.io/github/checks-status/bharel/asynciolimiter/master
+    :target: https://github.com/bharel/asynciolimiter
+.. image:: https://img.shields.io/github/stars/bharel/asynciolimiter?style=social
+    :target: https://github.com/bharel/asynciolimiter
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
