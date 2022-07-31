@@ -71,6 +71,16 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
     async def test_wait(self):
         await self.limiter.wait()
         self.loop.call_at.assert_called_once_with(3, ANY)
+    
+    async def test_rate_setter(self):
+        self.limiter.rate = 1 / 2
+        self.assertEqual(self.limiter.rate, 1 / 2)
+        self.add_waiter()
+        await self.advance_loop()
+        self.assert_call_at(2)
+    
+    async def test_repr(self):
+        self.assertEqual(eval(repr(self.limiter)).rate, self.limiter.rate)
 
     async def test_wait_multiple(self):
         self.add_waiter()
@@ -265,6 +275,9 @@ class StrictLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         super().setUp()
         self.limiter = StrictLimiter(1 / 3)
 
+    async def test_repr(self):
+        self.assertEqual(eval(repr(self.limiter)).rate, self.limiter.rate)
+
     async def test_wait(self):
         self.add_waiter()
         await self.advance_loop()
@@ -300,6 +313,17 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
         self.limiter = LeakyBucketLimiter(1 / 3, capacity=3)
+    
+    def test_repr(self):
+        self.assertEqual(eval(repr(self.limiter)).__dict__,
+                         self.limiter.__dict__)
+    
+    async def test_rate_setter(self):
+        self.limiter.rate = 1 / 2
+        self.assertEqual(self.limiter.rate, 1 / 2)
+        self.add_waiter()
+        await self.advance_loop()
+        self.assert_call_at(2)
 
     async def test_wait(self):
         await self.limiter.wait()

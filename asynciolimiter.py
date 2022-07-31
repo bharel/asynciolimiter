@@ -288,7 +288,7 @@ class Limiter(_CommonLimiterMixin):
         self._time_between_calls = 1 / rate
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(rate={self._rate})"
+        return f"{self.__class__.__qualname__}(rate={self._rate})"
 
     @property
     def rate(self) -> float:
@@ -444,7 +444,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self._level = 0
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}(rate={self._rate}, "
+        return (f"{self.__class__.__qualname__}(rate={self._rate}, "
                 f"capacity={self.capacity})")
 
     @property
@@ -576,7 +576,7 @@ class StrictLimiter(_CommonLimiterMixin):
         self.rate = rate
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(rate={self._rate})"
+        return f"{self.__class__.__qualname__}(rate={self.rate})"
 
     def _maybe_lock(self):
         """Lock the limiter, schedule a wakeup."""
