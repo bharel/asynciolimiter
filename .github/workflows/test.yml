@@ -1,4 +1,4 @@
-name: Test aioratelimiter
+name: Test asynciolimiter
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
       - name: Install flake8
         run: pip install flake8
       - name: Lint using flake8
-        run: python -m flake8 aioratelimiter.py tests.py
+        run: python -m flake8 asynciolimiter.py tests.py
   test:
     runs-on: ${{ matrix.os }}
     strategy:

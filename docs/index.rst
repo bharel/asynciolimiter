@@ -31,7 +31,7 @@ Example usage:
 .. code::
     
     import asyncio
-    from aioratelimiter import Limiter
+    from asynciolimiter import Limiter
 
     # Limit to 10 requests per 5 second (equiv to 2 requests per second)
     rate_limiter = Limiter(10/5)
@@ -50,7 +50,7 @@ Alternatively, you can wrap coroutines using :meth:`~Limiter.wrap`:
 .. code::
     
     import asyncio
-    from aioratelimiter import Limiter
+    from asynciolimiter import Limiter
 
     # Limit to 1 request per 3 second
     rate_limiter = Limiter(1/3)
@@ -67,7 +67,7 @@ Alternatively, you can wrap coroutines using :meth:`~Limiter.wrap`:
 Installation
 ****************
 
-Install from `PyPi <https://pypi.org/project/aioratelimiter/>`_:
+Install from `PyPi <https://pypi.org/project/asynciolimiter/>`_:
 
     ``pip install asyncioratelimiter``
 
@@ -330,7 +330,7 @@ Implementations
 Issues, Feature requests & Contributions
 ----------------------------------------
 
-See our `Github <https://github.com/bharel/aioratelimiter>`_ :-)
+See our `Github <https://github.com/bharel/asynciolimiter>`_ :-)
 
 
 

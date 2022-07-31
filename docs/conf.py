@@ -51,7 +51,7 @@ source_suffix = '.rst'
 root_doc = 'index'
 
 # General information about the project.
-project = 'aioratelimiter'
+project = 'asynciolimiter'
 copyright = '2022, Bar Harel'
 author = 'Bar Harel'
 
@@ -245,7 +245,7 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'aioratelimiterdoc'
+htmlhelp_basename = 'asynciolimiterdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 

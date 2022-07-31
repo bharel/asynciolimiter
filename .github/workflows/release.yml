@@ -1,4 +1,4 @@
-name: Release aioratelimiter
+name: Release asynciolimiter
 
 on:
   release:
@@ -15,7 +15,7 @@ jobs:
           python-version: 3.9
       - name: Verify version
         run: |
-          PY_VER=$(python -c "import aioratelimiter;print(aioratelimiter.__version__)")
+          PY_VER=$(python -c "import asynciolimiter;print(asynciolimiter.__version__)")
           echo Python version - "$PY_VER"
           SETUP_VER=$(awk "/version =/ { print \$3 }" setup.cfg)
           echo Setup.cfg version - "$SETUP_VER"
@@ -38,11 +38,11 @@ jobs:
       - name: Install twine
         run: pip install twine
       - name: Publish on Test PyPi
-        run: twine upload -r testpypi -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} aioratelimiter-*.whl
+        run: twine upload -r testpypi -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} asynciolimiter-*.whl
       - uses: actions/upload-artifact@v3
         with:
           name: wheel
-          path: aioratelimiter-*.whl
+          path: asynciolimiter-*.whl
   upload_production_pypi:
     needs: upload_test_pypi
     runs-on: ubuntu-latest
@@ -60,8 +60,8 @@ jobs:
         run: pip install twine
       - uses: AButler/upload-release-assets@v2.0
         with:
-          files: 'aioratelimiter-*.whl'
+          files: 'asynciolimiter-*.whl'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish on Test PyPi
-        run: twine upload -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} aioratelimiter-*.whl
+        run: twine upload -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} asynciolimiter-*.whl
 

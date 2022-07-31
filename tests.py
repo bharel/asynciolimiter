@@ -12,7 +12,7 @@ class PatchLoopMixin:
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         asyncio_mock = Mock(wraps=asyncio)
-        patcher = patch("aioratelimiter._asyncio", asyncio_mock)
+        patcher = patch("asynciolimiter._asyncio", asyncio_mock)
         patcher.start()
         self.addCleanup(patcher.stop)
         self.loop = SimpleNamespace()

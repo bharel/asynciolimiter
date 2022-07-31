@@ -1,1 +1,1 @@
-twine upload -r testpypi aioratelimiter-*.whl
+twine upload -r testpypi asynciolimiter-*.whl

@@ -1,1 +1,1 @@
-twine upload aioratelimiter-*.whl
+twine upload asynciolimiter-*.whl

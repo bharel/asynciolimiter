@@ -1,14 +1,14 @@
-# aioratelimiter
+# asynciolimiter
 A simple Python AsyncIO rate limiter.
 
 ## Installation
-`pip install aioratelimiter`
+`pip install asynciolimiter`
 
 ## Sample Usage
 
 ```python
 # Limit to 10 requests per 5 second (equiv to 2 requests per second)
->>> limiter = aioratelimiter.Limiter(10/5)
+>>> limiter = asynciolimiter.Limiter(10/5)
 >>> async def main():
 ...     await limiter.wait() # Wait for a slot to be available.
 ...     pass # do stuff
@@ -36,7 +36,7 @@ A simple Python AsyncIO rate limiter.
 
 ## Documentation
 
-Full documentation available on [Read the Docs](https://aioratelimiter.readthedocs.io/en/latest/).
+Full documentation available on [Read the Docs](https://asynciolimiter.readthedocs.io/en/latest/).
 
 ## License
 
