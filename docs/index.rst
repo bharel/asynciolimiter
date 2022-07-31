@@ -85,7 +85,7 @@ Installation
 
 Install from `PyPi <https://pypi.org/project/asynciolimiter/>`_:
 
-    ``pip install asyncioratelimiter``
+    ``pip install asynciolimiter``
 
 ****************
 Implementations
