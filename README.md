@@ -1,7 +1,7 @@
 # asynciolimiter
 A simple Python AsyncIO rate limiter.
 
-![GitHub branch checks state](https://img.shields.io/github/checks-status/bharel/asynciolimier/master)
+![GitHub branch checks state](https://img.shields.io/github/checks-status/bharel/asynciolimiter/master)
 ![PyPI](https://img.shields.io/pypi/v/asynciolimiter)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/asynciolimiter)
 [![codecov](https://codecov.io/gh/bharel/asynciolimiter/branch/master/graph/badge.svg?token=BJBL909NH3)](https://codecov.io/gh/bharel/asynciolimiter)
