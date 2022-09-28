@@ -84,10 +84,6 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
         await self.advance_loop()
         self.assert_call_at(2)
 
-    async def test_max_burst_setter(self):
-        self.limiter.max_burst = 10
-        self.assertEqual(self.limiter.max_burst, 10)
-
     async def test_repr(self):
         self.assertEqual(eval(repr(self.limiter)).rate, self.limiter.rate)
 

@@ -284,7 +284,7 @@ class Limiter(_CommonLimiterMixin):
         super().__init__()
         self._rate = rate
         self._time_between_calls = 1 / rate
-        self._max_burst = max_burst
+        self.max_burst = max_burst
 
     def __repr__(self):
         cls = self.__class__
@@ -304,16 +304,6 @@ class Limiter(_CommonLimiterMixin):
         """
         self._rate = value
         self._time_between_calls = 1 / value
-
-    @property
-    def max_burst(self) -> int:
-        """In case there's a delay, schedule no more than this many calls at once."""
-        return self._max_burst
-
-    @max_burst.setter
-    def max_burst(self, value: int) -> None:
-        """Set how many calls at once can be scheduled in case there's a delay."""
-        self._max_burst = value
 
     def _maybe_lock(self):
         """Lock the limiter as soon a request passes through."""
@@ -375,7 +365,7 @@ class Limiter(_CommonLimiterMixin):
 
         # Attempt to wake up only the missed wakeups and ones that were
         # inserted while we missed the original wakeup.
-        to_wakeup = min(int(missed_wakeups) + 1, self._max_burst)
+        to_wakeup = min(int(missed_wakeups) + 1, self.max_burst)
 
         while to_wakeup and self._waiters:
             waiter = self._waiters.popleft()
