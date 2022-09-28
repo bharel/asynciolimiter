@@ -66,7 +66,7 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
                       IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
-        self.limiter = Limiter(1 / 3)
+        self.limiter = Limiter(1 / 3, max_burst=3)
 
     async def test_wait(self):
         await self.limiter.wait()
@@ -78,6 +78,10 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
         self.add_waiter()
         await self.advance_loop()
         self.assert_call_at(2)
+
+    async def test_max_burst_setter(self):
+        self.limiter.max_burst = 10
+        self.assertEqual(self.limiter.max_burst, 10)
 
     async def test_repr(self):
         self.assertEqual(eval(repr(self.limiter)).rate, self.limiter.rate)
@@ -156,7 +160,6 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
             self.call_wakeup()
 
     async def test_wait_multiple_max_burst(self):
-        self.limiter.max_burst = 3
         for i in range(5):
             self.add_waiter()
         await self.advance_loop()
