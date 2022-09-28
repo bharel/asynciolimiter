@@ -117,7 +117,7 @@ to ensure smooth traffic.
 Implementations
 ****************
 
-.. class:: Limiter(rate)
+.. class:: Limiter(rate, *, max_burst = 5)
 
     Regular limiter, with a max burst compensating for delayed schedule.
     
@@ -141,7 +141,8 @@ Implementations
 
     .. code::
 
-        >>> limiter = Limiter(5)  # 5 calls per second.
+        >>> # 5 calls per second; up to 10 calls at once if there's a delay
+        >>> limiter = Limiter(5, max_burst=10)
         >>> async def request():
         ...     await limiter.wait()
         ...     print("Request")  # Do stuff

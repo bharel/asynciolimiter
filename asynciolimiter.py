@@ -273,19 +273,18 @@ class Limiter(_CommonLimiterMixin):
         rate: The rate (calls per second) at which the limiter should let
         traffic through.
     """
-    max_burst: int = 5
-    """In case there's a delay, schedule no more than this many calls at once.
-    """
-
-    def __init__(self, rate: float) -> None:
+    def __init__(self, rate: float, *, max_burst: int = 5) -> None:
         """Create a new limiter.
 
         Args:
             rate: The rate (calls per second) at which calls can pass through.
+            max_burst: In case there's a delay, schedule no more than this many
+            calls at once.
         """
         super().__init__()
         self._rate = rate
         self._time_between_calls = 1 / rate
+        self.max_burst = max_burst
 
     def __repr__(self):
         cls = self.__class__
