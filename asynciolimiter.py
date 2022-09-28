@@ -273,7 +273,7 @@ class Limiter(_CommonLimiterMixin):
         rate: The rate (calls per second) at which the limiter should let
         traffic through.
     """
-    def __init__(self, rate: float, max_burst: int = 5) -> None:
+    def __init__(self, rate: float, *, max_burst: int = 5) -> None:
         """Create a new limiter.
 
         Args:

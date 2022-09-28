@@ -68,6 +68,11 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
         super().setUp()
         self.limiter = Limiter(1 / 3, max_burst=3)
 
+    def test_init_keyword_only(self):
+        assert Limiter(1.0, max_burst=5).max_burst == 5
+        with self.assertRaises(TypeError):
+            Limiter(1.0, 5)
+
     async def test_wait(self):
         await self.limiter.wait()
         self.loop.call_at.assert_called_once_with(3, ANY)
