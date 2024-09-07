@@ -1,7 +1,7 @@
 # test documentation build configuration file, created by
 # sphinx-quickstart on Sun Jun 26 00:00:43 2016.
 #
-# This file is executed through importlib.import_module with 
+# This file is executed through importlib.import_module with
 # the current directory set to its containing dir.
 #
 # Note that not all possible configuration values are present in this

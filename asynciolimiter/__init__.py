@@ -19,38 +19,39 @@ If you don't know which of these to choose, go for the regular Limiter.
 The main method in each limiter is the wait(). For example:
 
     # Limit to 10 requests per 5 second (equiv to 2 requests per second)
-    >>> limiter = Limiter(10/5)
+    >>> limiter = Limiter(10 / 5)
     >>> async def main():
-    ...     await limiter.wait() # Wait for a slot to be available.
-    ...     pass # do stuff
+    ...     await limiter.wait()  # Wait for a slot to be available.
+    ...     pass  # do stuff
 
     # Limit to, at most, 1 request every 10 seconds
-    >>> limiter = StrictLimiter(1/10)
+    >>> limiter = StrictLimiter(1 / 10)
 
 For more info, see the documentation for each limiter.
 """
 
-from abc import ABC as _ABC, abstractmethod as _abstractmethod
 import asyncio as _asyncio
-from collections import deque as _deque
 import functools as _functools
-# Deque, Optional are required for supporting python versions 3.8, 3.9
-from typing import (Any, TypeVar as _TypeVar, Deque as _Deque,
-                    Optional as _Optional, cast as _cast,
-                    Callable as _Callable, Awaitable as _Awaitable)
+from abc import ABC as _ABC
+from abc import abstractmethod as _abstractmethod
+from collections import deque as _deque
+from collections.abc import Awaitable as _Awaitable
+from collections.abc import Callable as _Callable
+from typing import Any
+from typing import TypeVar as _TypeVar
+from typing import cast as _cast
 
-__all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
+__all__ = ["Limiter", "StrictLimiter", "LeakyBucketLimiter"]
 __version__ = "1.1.0.post1"
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
 
 
-_T = _TypeVar('_T')
+_T = _TypeVar("_T")
 
 
-def _pop_pending(
-        futures: _Deque[_asyncio.Future]) -> _Optional[_asyncio.Future]:
+def _pop_pending(futures: _deque[_asyncio.Future]) -> _asyncio.Future | None:
     """Pop until the first pending future is found and return it.
 
     If all futures are done, or deque is empty, return None.
@@ -70,6 +71,7 @@ def _pop_pending(
 
 class _BaseLimiter(_ABC):
     """Base class for all limiters."""
+
     @_abstractmethod
     async def wait(self) -> None:  # pragma: no cover # ABC
         """Wait for the limiter to let us through.
@@ -77,7 +79,6 @@ class _BaseLimiter(_ABC):
         Main function of the limiter. Blocks if limit has been reached, and
         lets us through once time passes.
         """
-        pass
 
     @_abstractmethod
     def cancel(self) -> None:  # pragma: no cover # ABC
@@ -86,7 +87,6 @@ class _BaseLimiter(_ABC):
         This will cancel all currently waiting calls.
         Limiter is reusable afterwards, and new calls will wait as usual.
         """
-        pass
 
     @_abstractmethod
     def breach(self) -> None:  # pragma: no cover # ABC
@@ -95,7 +95,6 @@ class _BaseLimiter(_ABC):
         All waiting calls will be let through, new `.wait()` calls will also
         pass without waiting, until `.reset()` is called.
         """
-        pass
 
     @_abstractmethod
     def reset(self) -> None:  # pragma: no cover # ABC
@@ -106,7 +105,6 @@ class _BaseLimiter(_ABC):
         Limiter is reusable afterwards, and the next call will be
         immediately scheduled.
         """
-        pass
 
     def wrap(self, coro: _Awaitable[_T]) -> _Awaitable[_T]:
         """Wrap a coroutine with the limiter.
@@ -119,14 +117,12 @@ class _BaseLimiter(_ABC):
             >>> async def wrapper():
             ...     await limiter.wait()
             ...     return await coro
-            ...
             >>> wapper()
 
         Example use:
 
             >>> async def foo(number):
             ...     print(number)  # Do stuff
-            ...
             >>> limiter = Limiter(1)
             >>> async def main():
             ...     print_numbers = (foo(i) for i in range(10))
@@ -139,9 +135,11 @@ class _BaseLimiter(_ABC):
         Returns:
             The wrapped coroutine.
         """
+
         async def _wrapper() -> _T:
             await self.wait()
             return await coro
+
         wrapper = _wrapper()
         _functools.update_wrapper(_wrapper, _cast(_Callable, coro))
         return wrapper
@@ -164,8 +162,8 @@ class _CommonLimiterMixin(_BaseLimiter):
         """
         super().__init__(*args, **kwargs)
         self._locked = False
-        self._waiters: _Deque[_asyncio.Future] = _deque()
-        self._wakeup_handle: _Optional[_asyncio.TimerHandle] = None
+        self._waiters: _deque[_asyncio.Future] = _deque()
+        self._wakeup_handle: _asyncio.TimerHandle | None = None
         self._breached = False
 
     async def wait(self) -> None:
@@ -211,7 +209,6 @@ class _CommonLimiterMixin(_BaseLimiter):
         Limiter was unlocked, and we can choose to lock it.
         Subclasses must implement this.
         """
-        pass
 
     def __del__(self) -> None:
         """Finalization. Cancel waiters to prevent a deadlock."""
@@ -262,7 +259,6 @@ class Limiter(_CommonLimiterMixin):
         >>> async def request():
         ...     await limiter.wait()
         ...     print("Request")  # Do stuff
-        ...
         >>> async def main():
         ...     # Schedule 5 requests per second.
         ...     await asyncio.gather(*(request() for _ in range(10)))
@@ -273,6 +269,7 @@ class Limiter(_CommonLimiterMixin):
         rate: The rate (calls per second) at which the limiter should let
         traffic through.
     """
+
     def __init__(self, rate: float, *, max_burst: int = 5) -> None:
         """Create a new limiter.
 
@@ -310,9 +307,12 @@ class Limiter(_CommonLimiterMixin):
         self._locked = True
         self._schedule_wakeup()
 
-    def _schedule_wakeup(self, at: _Optional[float] = None,
-                         *, _loop: _asyncio.AbstractEventLoop | None = None
-                         ) -> None:
+    def _schedule_wakeup(
+        self,
+        at: float | None = None,
+        *,
+        _loop: _asyncio.AbstractEventLoop | None = None,
+    ) -> None:
         """Schedule the next wakeup to be unlocked.
 
         Args:
@@ -331,10 +331,11 @@ class Limiter(_CommonLimiterMixin):
 
     def _wakeup(self) -> None:
         """Advance the limiter counters once."""
+
         def _unlock() -> None:
             self._wakeup_handle = None
             self._locked = False
-            return
+
         loop = _asyncio.get_running_loop()
         waiters = self._waiters
         # Short circuit if there are no waiters
@@ -354,7 +355,8 @@ class Limiter(_CommonLimiterMixin):
             # should be late. If we came early on 2 ticks, that's really bad.
             assert -leftover_time < self._time_between_calls, (
                 f"Event loop is too fast. Woke up {-leftover_time*self.rate} "
-                f"ticks early.")
+                f"ticks early."
+            )
 
         else:
             # We woke up too late!
@@ -362,7 +364,8 @@ class Limiter(_CommonLimiterMixin):
             # or high event loop load.
             # Check if we overflowed longer than a single call-time.
             missed_wakeups, leftover_time = divmod(
-                current_time - this_wakeup, self._time_between_calls)
+                current_time - this_wakeup, self._time_between_calls
+            )
 
         # Attempt to wake up only the missed wakeups and ones that were
         # inserted while we missed the original wakeup.
@@ -387,7 +390,8 @@ class Limiter(_CommonLimiterMixin):
         else:
             self._schedule_wakeup(
                 at=current_time + self._time_between_calls - leftover_time,
-                _loop=loop)
+                _loop=loop,
+            )
 
 
 class LeakyBucketLimiter(_CommonLimiterMixin):
@@ -412,7 +416,6 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         >>> async def request():
         ...     await limiter.wait()
         ...     print("Request")  # Do stuff
-        ...
         >>> async def main():
         ...     # First 10 requests would be immediate, then schedule 5
         ...     # requests per second.
@@ -446,8 +449,10 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
 
     def __repr__(self) -> str:
         cls = self.__class__
-        return (f"{cls.__module__}.{cls.__qualname__}(rate={self._rate}, "
-                f"capacity={self.capacity})")
+        return (
+            f"{cls.__module__}.{cls.__qualname__}(rate={self._rate}, "
+            f"capacity={self.capacity})"
+        )
 
     @property
     def rate(self) -> float:
@@ -467,8 +472,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self._time_between_calls = 1 / value
 
     def _maybe_lock(self) -> None:
-        """Increase the level, schedule a drain. Lock when the bucket is full.
-        """
+        """Increase the level, schedule a drain. Lock when the bucket is full."""
         self._level += 1
 
         if self._wakeup_handle is None:
@@ -478,9 +482,12 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             self._locked = True
             return
 
-    def _schedule_wakeup(self, at: _Optional[float] = None,
-                         *, _loop: _asyncio.AbstractEventLoop | None = None
-                         ) -> None:
+    def _schedule_wakeup(
+        self,
+        at: float | None = None,
+        *,
+        _loop: _asyncio.AbstractEventLoop | None = None,
+    ) -> None:
         """Schedule the next wakeup to be unlocked.
 
         Args:
@@ -522,7 +529,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             # should be late. If we came early on 2 ticks, that's really bad.
             assert -leftover_time < self._time_between_calls, (
                 f"Event loop is too fast. Woke up {-leftover_time*self.rate} "
-                f"ticks early.")
+                f"ticks early."
+            )
 
         else:
             # We woke up too late!
@@ -530,7 +538,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             # or high event loop load.
             # Check if we overflowed longer than a single call-time.
             missed_drains, leftover_time = divmod(
-                current_time - this_wakeup, self._time_between_calls)
+                current_time - this_wakeup, self._time_between_calls
+            )
 
         capacity = self.capacity
         level = self._level
@@ -538,8 +547,10 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         # We can decrease without accounting for current level.
         assert missed_drains.is_integer()
         level = max(0, level - int(missed_drains) - 1)
-        while level < capacity and (
-                waiter := _pop_pending(self._waiters)) is not None:
+        while (
+            level < capacity
+            and (waiter := _pop_pending(self._waiters)) is not None
+        ):
             waiter.set_result(None)
             level += 1
 
@@ -591,7 +602,8 @@ class StrictLimiter(_CommonLimiterMixin):
         """Schedule the next wakeup to be unlocked."""
         loop = _asyncio.get_running_loop()
         self._wakeup_handle = loop.call_at(
-            loop.time() + 1 / self.rate, self._wakeup)
+            loop.time() + 1 / self.rate, self._wakeup
+        )
 
     def _wakeup(self) -> None:
         """Wakeup a single waiter if there is any, otherwise unlock."""

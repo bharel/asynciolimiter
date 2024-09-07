@@ -54,3 +54,10 @@ packages = ["asynciolimiter"]
 
 [tool.hatch.version]
 path = "asynciolimiter/__init__.py"
+
+[tool.ruff]
+exclude = ["docs"]
+line-length = 80
+
+[tool.ruff.lint]
+ignore = ["PT", "S101"]
