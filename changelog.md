@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0.post3] - 2024-09-07
+
+### ⚙️ Miscellaneous Tasks
+
+- Add verified publisher status to pypi (#13)
+
 ## [1.1.0.post2] - 2024-09-07
 
 ### 📚 Documentation
