@@ -47,3 +47,5 @@ Full documentation available on [Read the Docs](https://asynciolimiter.readthedo
 
 Licensed under the MIT License.
 
+## Contribution
+See [contributing.md](CONTRIBUTING.md).
