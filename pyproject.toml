@@ -61,3 +61,6 @@ line-length = 80
 
 [tool.ruff.lint]
 ignore = ["PT", "S101"]
+
+[tool.hatch.envs.dev]
+features = ["dev"]
