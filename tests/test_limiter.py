@@ -1,14 +1,19 @@
 import asyncio
-from typing import Awaitable, List
-from unittest import IsolatedAsyncioTestCase, skipUnless
-from unittest.mock import patch, Mock, ANY
-from asynciolimiter import Limiter, StrictLimiter, LeakyBucketLimiter
-import asynciolimiter as asynciolimiter
+import typing
 from types import SimpleNamespace
+from unittest import IsolatedAsyncioTestCase, skipUnless
+from unittest.mock import ANY, Mock, patch
+
+import asynciolimiter
+from asynciolimiter import LeakyBucketLimiter, Limiter, StrictLimiter
+
+if typing.TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Awaitable
 
 
 class PatchLoopMixin(IsolatedAsyncioTestCase):
     """Patch the loop scheduling functions"""
+
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         asyncio_mock = Mock(wraps=asyncio)
@@ -35,15 +40,16 @@ class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         self.waiters_finished = 0
-        self.waiters: List[Awaitable] = []
+        self.waiters: list[Awaitable] = []
         return super().setUp()
 
     def call_wakeup(self):
         self.get_scheduled_function()()
 
     def add_waiter(self):
-        def cb(fut):
+        def cb(_):
             self.waiters_finished += 1
+
         task = asyncio.create_task(self.limiter.wait())
         task.add_done_callback(cb)
         self.waiters.append(task)
@@ -62,8 +68,9 @@ class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
         self.assertEqual(self.waiters_finished, count)
 
 
-class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
-                      IsolatedAsyncioTestCase):
+class LimiterTestCase(
+    CommonTestsMixin, PatchLoopMixin, IsolatedAsyncioTestCase
+):
     def setUp(self):
         super().setUp()
         self.limiter = Limiter(1 / 3, max_burst=3)
@@ -161,7 +168,7 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
             self.call_wakeup()
 
     async def test_wait_multiple_max_burst(self):
-        for i in range(5):
+        for _ in range(5):
             self.add_waiter()
         await self.advance_loop()
         self.assert_call_at(3)
@@ -240,6 +247,7 @@ class LimiterTestCase(CommonTestsMixin, PatchLoopMixin,
     async def test_wrap(self):
         async def coro():
             return 123
+
         task = asyncio.create_task(self.limiter.wrap(coro()))
         await self.advance_loop()
         self.assertEqual((await task), 123)
@@ -319,8 +327,9 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         self.limiter = LeakyBucketLimiter(1 / 3, capacity=3)
 
     def test_repr(self):
-        self.assertEqual(eval(repr(self.limiter)).__dict__,
-                         self.limiter.__dict__)
+        self.assertEqual(
+            eval(repr(self.limiter)).__dict__, self.limiter.__dict__
+        )
 
     async def test_rate_setter(self):
         self.limiter.rate = 1 / 2
@@ -378,7 +387,7 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         self.waiters[-1].cancel()
 
     async def test_wait_max_burst(self):
-        for i in range(10):
+        for _ in range(10):
             self.add_waiter()
         await self.advance_loop()
         self.assert_finished(3)
@@ -398,8 +407,8 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         self.limiter.cancel()
 
     async def test_bucket_reset(self):
-        for i in range(2):
-            for i in range(4):
+        for _ in range(2):
+            for _ in range(4):
                 self.add_waiter()
             await self.advance_loop()
             self.limiter.reset()

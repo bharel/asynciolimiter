@@ -15,14 +15,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install flake8
-        run: pip install flake8
-      - name: Lint using flake8
-        run: python -m flake8 asynciolimiter tests
+      - name: Install hatch
+        run: pip install hatch
+      - name: Lint using hatch
+        run: hatch fmt --check
       - name: Install mypy
         run: pip install mypy
       - name: Lint using mypy
-        run: mypy --ignore-missing-imports asynciolimiter tests
+        run: >-
+          mypy --ignore-missing-imports --check-untyped-defs
+          asynciolimiter
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -36,8 +38,10 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install hatch
+      run: pip install hatch
     - name: Test on Python ${{ matrix.python-version }}
-      run: python -m unittest
+      run: hatch test
   
   generate-coverage:
     runs-on: ubuntu-latest
