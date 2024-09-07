@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0.post1] - 2024-09-07
+
+### ⚙️ Miscellaneous Tasks
+
+- Update github action for assets uploading
+- Updated trove markers, we're in production. Added some topics too and typing designation.
+- Removing the "v" prefix from releases. Utilities using semver fail.
+- Recognize "misc" as a changelog marker.
+
 ## [1.1.0] - 2024-09-07
 
 ### 🐛 Bug Fixes
