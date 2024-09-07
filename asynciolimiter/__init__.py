@@ -40,7 +40,7 @@ from typing import (Any, TypeVar as _TypeVar, Deque as _Deque,
                     Callable as _Callable, Awaitable as _Awaitable)
 
 __all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
