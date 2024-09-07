@@ -21,7 +21,7 @@ Thank you for considering contributing to `bharel/asynciolimiter`! Here are some
 1. **Install Dependencies**: Install the necessary dependencies using `hatch`.
    ```sh
    pip install hatch
-   hatch env create
+   hatch env create dev
    ```
 
 2. **Make Changes**: Implement your changes in the codebase.
@@ -68,6 +68,15 @@ Thank you for your contributions!
 
 # For Maintainers
 
+## Merging PRs
+
+1. **Wait for all checks to complete**: These include linters and testing.
+2. **Merge with squash**: Change the commit message according to the prefixes set in `cliff.toml`, ending with `(#PR)`.  
+    For example:  
+   `feat: My new feature (#12)`  
+   or  
+   `fix: My bugfix (#45)`.
+
 ## Bumping Version
 
 1. **Install Dependencies**: Ensure you have `git-cliff` and `hatch` installed.
@@ -75,14 +84,18 @@ Thank you for your contributions!
    pip install git-cliff hatch
    ```
 
-2. **Generate Changelog**: Use `git-cliff` to generate the changelog.
-   ```sh
-   git cliff -o CHANGELOG.md
-   ```
-
-3. **Update Version**: Use `hatch` to bump the version. Replace `x.y.z` with the new version number.
+2. **Update Version**: Use `hatch` to bump the version. Replace `x.y.z` with the new version number.
    ```sh
    hatch version x.y.z
+   ```
+   Alternatively, bump the version by specifying the designator such as `minor` or `post`.
+   ```sh
+   hatch version patch
+   ```
+
+3. **Generate Changelog**: Use `git-cliff` to generate the changelog. Replace `x.y.z` with the new version number.
+   ```sh
+   git cliff --tag x.y.z -o CHANGELOG.md
    ```
 
 4. **Commit Changes**: Commit the updated `CHANGELOG.md` and version changes.
