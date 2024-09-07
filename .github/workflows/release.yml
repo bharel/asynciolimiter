@@ -17,7 +17,7 @@ jobs:
         run: |
           PY_VER=$(python -c "import asynciolimiter;print(asynciolimiter.__version__)")
           echo Python version - "$PY_VER"
-          TAG_VER=$(echo ${{ github.event.release.tag_name }} | cut -c 2-)
+          TAG_VER=${{ github.event.release.tag_name }}
           echo Tag version "$TAG_VER"
           [[ $TAG_VER == $PY_VER ]]
   upload_test_pypi:
