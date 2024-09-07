@@ -38,8 +38,10 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install hatch
+      run: pip install hatch
     - name: Test on Python ${{ matrix.python-version }}
-      run: python -m unittest
+      run: hatch test
   
   generate-coverage:
     runs-on: ubuntu-latest
