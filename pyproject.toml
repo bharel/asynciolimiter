@@ -33,8 +33,10 @@ keywords = ["rate limiter", "asyncio", "throttling"]
 requires-python = ">=3.11"
 
 [project.urls]
+Homepage = "https://github.com/bharel/asynciolimiter"
 Documentation = "https://asynciolimiter.readthedocs.io/en/latest/"
 Source = "https://github.com/bharel/asynciolimiter"
+Changelog = "https://github.com/bharel/asynciolimiter/blob/master/changelog.md"
 
 [project.optional-dependencies]
 dev = [

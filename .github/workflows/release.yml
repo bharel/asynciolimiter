@@ -23,7 +23,9 @@ jobs:
   upload_test_pypi:
     needs: check_version
     runs-on: ubuntu-latest
-    environment: Test PyPi
+    environment:
+      name: Test PyPi
+      url: https://test.pypi.org/p/asynciolimiter
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -31,19 +33,23 @@ jobs:
         with:
           python-version: "3.12"
       - name: Build wheel
-        run: pip wheel .
-      - name: Install twine
-        run: pip install twine
+        run: |
+          pip install hatch
+          hatch build
       - name: Publish on Test PyPi
-        run: twine upload -r testpypi -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} asynciolimiter-*.whl
+        run: hatch publish -r test -u ${{ secrets.PYPI_USERNAME }} -a ${{ secrets.PYPI_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel
-          path: asynciolimiter-*.whl
+          name: dist
+          path: dist/*
   upload_production_pypi:
     needs: upload_test_pypi
     runs-on: ubuntu-latest
-    environment: Production PyPi
+    environment:
+      name: Production PyPi
+      url: https://pypi.org/p/asynciolimiter
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -52,13 +58,10 @@ jobs:
           python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
-          name: wheel
-      - name: Install twine
-        run: pip install twine
+          name: dist
       - uses: AButler/upload-release-assets@v3.0
         with:
-          files: 'asynciolimiter-*.whl'
+          files: 'dist/*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish on Production PyPi
-        run: twine upload -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} asynciolimiter-*.whl
-
+      - name: Upload release to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
