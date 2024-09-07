@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.0.post1] - 2024-09-07
+## [1.1.0.post2] - 2024-09-07
+
+### 📚 Documentation
+
+- Contributing guidelines were added (#12)
+
+### 🎨 Styling
+
+- Allow using the ruff formatter using hatch fmt (#11)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -10,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Updated trove markers, we're in production. Added some topics too and typing designation.
 - Removing the "v" prefix from releases. Utilities using semver fail.
 - Recognize "misc" as a changelog marker.
+- Hatch can now easily create a development environment. (#10)
 
 ## [1.1.0] - 2024-09-07
 

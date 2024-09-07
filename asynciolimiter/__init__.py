@@ -42,7 +42,7 @@ from typing import TypeVar as _TypeVar
 from typing import cast as _cast
 
 __all__ = ["Limiter", "StrictLimiter", "LeakyBucketLimiter"]
-__version__ = "1.1.0.post1"
+__version__ = "1.1.0.post2"
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
