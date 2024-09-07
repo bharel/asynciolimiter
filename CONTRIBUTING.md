@@ -1,6 +1,6 @@
-# Contributing to `bharel/asynciolimiter`
+# Contributing to asynciolimiter
 
-Thank you for considering contributing to `bharel/asynciolimiter`! Here are some guidelines to help you get started:
+Thank you for considering contributing to asynciolimiter! Here are some guidelines to help you get started:
 
 ## Getting Started
 
@@ -112,7 +112,7 @@ Thank you for your contributions!
 
 6. **Push Changes**: Push the changes to the main repository.
    ```sh
-   git push origin main
+   git push origin master
    ```
 
 7. **Create Release**: Go to the GitHub repository and create a new release using the pushed tag. Include the changelog in the release description.
