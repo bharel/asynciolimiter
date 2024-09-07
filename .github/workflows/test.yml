@@ -18,11 +18,11 @@ jobs:
       - name: Install flake8
         run: pip install flake8
       - name: Lint using flake8
-        run: python -m flake8 asynciolimiter.py tests.py
+        run: python -m flake8 asynciolimiter tests
       - name: Install mypy
         run: pip install mypy
       - name: Lint using mypy
-        run: mypy --ignore-missing-imports asynciolimiter.py tests.py
+        run: mypy --ignore-missing-imports asynciolimiter tests
   test:
     runs-on: ${{ matrix.os }}
     strategy:
