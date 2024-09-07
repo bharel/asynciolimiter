@@ -36,7 +36,7 @@ jobs:
         run: pip install twine
       - name: Publish on Test PyPi
         run: twine upload -r testpypi -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} asynciolimiter-*.whl
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: wheel
           path: asynciolimiter-*.whl
