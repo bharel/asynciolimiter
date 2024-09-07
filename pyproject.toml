@@ -54,3 +54,6 @@ packages = ["asynciolimiter"]
 
 [tool.hatch.version]
 path = "asynciolimiter/__init__.py"
+
+[tool.hatch.envs.dev]
+features = ["dev"]
