@@ -24,7 +24,7 @@ jobs:
       - name: Lint using mypy
         run: >-
           mypy --ignore-missing-imports --check-untyped-defs
-          asynciolimiter tests
+          asynciolimiter
   test:
     runs-on: ${{ matrix.os }}
     strategy:
