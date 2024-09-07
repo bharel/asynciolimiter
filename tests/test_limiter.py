@@ -7,7 +7,7 @@ from unittest.mock import ANY, Mock, patch
 import asynciolimiter
 from asynciolimiter import LeakyBucketLimiter, Limiter, StrictLimiter
 
-if typing.TYPE_CHECKING:
+if typing.TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Awaitable
 
 

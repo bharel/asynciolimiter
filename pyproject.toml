@@ -64,3 +64,6 @@ ignore = ["PT", "S101"]
 
 [tool.hatch.envs.dev]
 features = ["dev"]
+
+[tool.mypy]
+exclude = ["tests", "docs"]
