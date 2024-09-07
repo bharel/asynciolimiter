@@ -106,8 +106,8 @@ Thank you for your contributions!
 
 5. **Tag the Release**: Create a new git tag for the release.
    ```sh
-   git tag vx.y.z
-   git push origin vx.y.z
+   git tag x.y.z
+   git push origin x.y.z
    ```
 
 6. **Push Changes**: Push the changes to the main repository.
