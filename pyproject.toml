@@ -1,3 +1,49 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "asynciolimiter"
+dynamic = ["version"]
+description = "Rate limiter for Async IO"
+readme = "README.md"
+authors = [
+    { name = "Bar Harel", email = "bzvi7919@gmail.com" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries"
+]
+keywords = ["rate limiter", "asyncio", "throttling"]
+requires-python = ">=3.11"
+
+[project.urls]
+Documentation = "https://asynciolimiter.readthedocs.io/en/latest/"
+Source = "https://github.com/bharel/asynciolimiter"
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "isort",
+    "mypy",
+    "git-cliff",
+    "sphinx",
+    "sphinx-rtd-theme"
+]
+
+[tool.hatch.build.targets.sdist]
+packages = ["asynciolimiter"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["asynciolimiter"]
+
+[tool.hatch.version]
+path = "asynciolimiter/__init__.py"

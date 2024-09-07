@@ -35,12 +35,12 @@ import asyncio as _asyncio
 from collections import deque as _deque
 import functools as _functools
 # Deque, Optional are required for supporting python versions 3.8, 3.9
-from typing import (TypeVar as _TypeVar, Deque as _Deque,
+from typing import (Any, TypeVar as _TypeVar, Deque as _Deque,
                     Optional as _Optional, cast as _cast,
                     Callable as _Callable, Awaitable as _Awaitable)
 
 __all__ = ['Limiter', 'StrictLimiter', 'LeakyBucketLimiter']
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
@@ -157,7 +157,7 @@ class _CommonLimiterMixin(_BaseLimiter):
         _wakeup_handle: An asyncio.TimerHandle for the next scheduled wakeup.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the limiter.
 
         Subclasses must call `super()`.
@@ -213,7 +213,7 @@ class _CommonLimiterMixin(_BaseLimiter):
         """
         pass
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Finalization. Cancel waiters to prevent a deadlock."""
         # No need to touch wakeup, as wakeup holds a strong reference and
         # __del__ won't be called.
@@ -286,7 +286,7 @@ class Limiter(_CommonLimiterMixin):
         self._time_between_calls = 1 / rate
         self.max_burst = max_burst
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         cls = self.__class__
         return f"{cls.__module__}.{cls.__qualname__}(rate={self._rate})"
 
@@ -305,13 +305,14 @@ class Limiter(_CommonLimiterMixin):
         self._rate = value
         self._time_between_calls = 1 / value
 
-    def _maybe_lock(self):
+    def _maybe_lock(self) -> None:
         """Lock the limiter as soon a request passes through."""
         self._locked = True
         self._schedule_wakeup()
 
     def _schedule_wakeup(self, at: _Optional[float] = None,
-                         *, _loop=None) -> None:
+                         *, _loop: _asyncio.AbstractEventLoop | None = None
+                         ) -> None:
         """Schedule the next wakeup to be unlocked.
 
         Args:
@@ -443,7 +444,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self.capacity = capacity
         self._level = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         cls = self.__class__
         return (f"{cls.__module__}.{cls.__qualname__}(rate={self._rate}, "
                 f"capacity={self.capacity})")
@@ -465,7 +466,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         self._rate = value
         self._time_between_calls = 1 / value
 
-    def _maybe_lock(self):
+    def _maybe_lock(self) -> None:
         """Increase the level, schedule a drain. Lock when the bucket is full.
         """
         self._level += 1
@@ -478,7 +479,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             return
 
     def _schedule_wakeup(self, at: _Optional[float] = None,
-                         *, _loop=None) -> None:
+                         *, _loop: _asyncio.AbstractEventLoop | None = None
+                         ) -> None:
         """Schedule the next wakeup to be unlocked.
 
         Args:
@@ -576,22 +578,22 @@ class StrictLimiter(_CommonLimiterMixin):
         super().__init__()
         self.rate = rate
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         cls = self.__class__
         return f"{cls.__module__}.{cls.__qualname__}(rate={self.rate})"
 
-    def _maybe_lock(self):
+    def _maybe_lock(self) -> None:
         """Lock the limiter, schedule a wakeup."""
         self._locked = True
         self._schedule_wakeup()
 
-    def _schedule_wakeup(self):
+    def _schedule_wakeup(self) -> None:
         """Schedule the next wakeup to be unlocked."""
         loop = _asyncio.get_running_loop()
         self._wakeup_handle = loop.call_at(
             loop.time() + 1 / self.rate, self._wakeup)
 
-    def _wakeup(self):
+    def _wakeup(self) -> None:
         """Wakeup a single waiter if there is any, otherwise unlock."""
         waiter = _pop_pending(self._waiters)
         if waiter is not None:
