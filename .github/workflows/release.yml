@@ -55,7 +55,7 @@ jobs:
           name: wheel
       - name: Install twine
         run: pip install twine
-      - uses: AButler/upload-release-assets@v2.0
+      - uses: AButler/upload-release-assets@v3.0
         with:
           files: 'asynciolimiter-*.whl'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
