@@ -3,7 +3,7 @@ from typing import Awaitable, List
 from unittest import IsolatedAsyncioTestCase, skipUnless
 from unittest.mock import patch, Mock, ANY
 from asynciolimiter import Limiter, StrictLimiter, LeakyBucketLimiter
-import asynciolimiter
+import asynciolimiter as asynciolimiter
 from types import SimpleNamespace
 
 
@@ -337,7 +337,7 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         # Should be empty
         await self.advance_loop()
         # Wasn't rescheduled.
-        self.loop.call_at.called_once()
+        self.loop.call_at.assert_called_once()
 
     async def test_wait_multiple(self):
         self.add_waiter()

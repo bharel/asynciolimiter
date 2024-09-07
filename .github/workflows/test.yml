@@ -10,30 +10,30 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - name: Install flake8
         run: pip install flake8
       - name: Lint using flake8
-        run: python -m flake8 asynciolimiter.py tests.py
+        run: python -m flake8 asynciolimiter tests
       - name: Install mypy
         run: pip install mypy
       - name: Lint using mypy
-        run: mypy --ignore-missing-imports asynciolimiter.py tests.py
+        run: mypy --ignore-missing-imports asynciolimiter tests
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.8, 3.9, "3.10"]
+        python-version: [3.11, 3.12, "3.13.0-rc.1"]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Test on Python ${{ matrix.python-version }}
@@ -43,18 +43,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
+        python-version: "3.12"
     - name: Install Coverage
       run: pip install coverage
     - name: Generate coverage report
-      run: coverage run --branch -m unittest tests.py && coverage xml
+      run: coverage run --branch -m unittest && coverage xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         flags: unittests
 
