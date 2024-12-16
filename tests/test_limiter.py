@@ -164,7 +164,7 @@ class LimiterTestCase(
         self.assert_finished(2)
         self.assert_call_at(6)
         self.set_time(2)  # Time just went backwards.
-        with self.assertRaises(AssertionError):
+        with self.assertWarns(ResourceWarning):
             self.call_wakeup()
 
     async def test_wait_multiple_max_burst(self):
@@ -471,5 +471,5 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         self.assert_finished(2)
         self.assert_call_at(6)
         self.set_time(2)  # Time just went backwards.
-        with self.assertRaises(AssertionError):
+        with self.assertWarns(ResourceWarning):
             self.call_wakeup()

@@ -241,6 +241,15 @@ class _CommonLimiterMixin(_BaseLimiter):
         self._cancel_wakeup()
 
 
+_EVENT_LOOP_FAST_WARNING = (
+    "Event loop is too fast. Woke up {} ticks early ({} ms). System will "
+    "utilize more CPU than necessary. This warning results from an "
+    "inaccurate system clock or a bug in the event loop implementation. "
+    "You may safely ignore this warning, but please report it on Github "
+    "to help identify the cause."
+)
+
+
 class Limiter(_CommonLimiterMixin):
     """Regular limiter, with a max burst compensating for delayed schedule.
 
@@ -353,10 +362,13 @@ class Limiter(_CommonLimiterMixin):
             # More than 1 tick early. Great success.
             # Technically the higher the rate, the more likely the event loop
             # should be late. If we came early on 2 ticks, that's really bad.
-            assert -leftover_time < self._time_between_calls, (
-                f"Event loop is too fast. Woke up {-leftover_time*self.rate} "
-                f"ticks early."
-            )
+            if -leftover_time > self._time_between_calls:
+                import warnings
+
+                _warning = _EVENT_LOOP_FAST_WARNING.format(
+                    -leftover_time * self.rate, -leftover_time * 1000
+                )
+                warnings.warn(_warning, ResourceWarning, stacklevel=1)
 
         else:
             # We woke up too late!
@@ -527,10 +539,13 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             # More than 1 tick early. Great success.
             # Technically the higher the rate, the more likely the event loop
             # should be late. If we came early on 2 ticks, that's really bad.
-            assert -leftover_time < self._time_between_calls, (
-                f"Event loop is too fast. Woke up {-leftover_time*self.rate} "
-                f"ticks early."
-            )
+            if -leftover_time > self._time_between_calls:
+                import warnings
+
+                _warning = _EVENT_LOOP_FAST_WARNING.format(
+                    -leftover_time * self.rate, -leftover_time * 1000
+                )
+                warnings.warn(_warning, ResourceWarning, stacklevel=1)
 
         else:
             # We woke up too late!
