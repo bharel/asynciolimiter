@@ -38,7 +38,7 @@ Thank you for considering contributing to asynciolimiter! Here are some guidelin
 
 5. **Commit Changes**: Commit your changes with a descriptive commit message.
    ```sh
-   git commit -m "Description of the changes made"
+   git commit -a -m "Description of the changes made"
    ```
 
 6. **Push Changes**: Push your changes to your forked repository.
