@@ -101,7 +101,7 @@ Thank you for your contributions!
 4. **Commit Changes**: Commit the updated `CHANGELOG.md` and version changes.
    ```sh
    git add CHANGELOG.md pyproject.toml
-   git commit -m "Bump version to x.y.z"
+   git commit -a -m "Bump version to x.y.z"
    ```
 
 5. **Tag the Release**: Create a new git tag for the release.
