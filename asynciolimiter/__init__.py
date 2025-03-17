@@ -529,6 +529,8 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         """Drain the bucket at least once. Wakeup waiters if there are any."""
         loop = _asyncio.get_running_loop()
         this_wakeup = self._next_wakeup
+        self._next_wakeup = None
+        self._wakeup_handle = None
         current_time = loop.time()
 
         # We woke up early. Damn event loop!
