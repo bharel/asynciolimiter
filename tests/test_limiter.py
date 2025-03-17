@@ -33,7 +33,7 @@ class PatchLoopMixin(IsolatedAsyncioTestCase):
 
     def get_scheduled_function(self):
         return self.get_scheduled_functions()[-1]
-    
+
     def clear_scheduled_functions(self):
         self.loop.call_at.reset_mock()
 
