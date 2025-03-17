@@ -33,6 +33,9 @@ class PatchLoopMixin(IsolatedAsyncioTestCase):
 
     def get_scheduled_function(self):
         return self.get_scheduled_functions()[-1]
+    
+    def clear_scheduled_functions(self):
+        self.loop.call_at.reset_mock()
 
 
 class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
@@ -44,7 +47,9 @@ class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
         return super().setUp()
 
     def call_wakeup(self):
-        self.get_scheduled_function()()
+        func = self.get_scheduled_function()
+        self.clear_scheduled_functions()
+        func()
 
     def add_waiter(self):
         def cb(_):
@@ -346,7 +351,7 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         # Should be empty
         await self.advance_loop()
         # Wasn't rescheduled.
-        self.loop.call_at.assert_called_once()
+        self.loop.call_at.assert_not_called()
 
     async def test_wait_multiple(self):
         self.add_waiter()
@@ -426,7 +431,7 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         self.set_time(3)
         self.call_wakeup()
         await self.advance_loop()
-        self.loop.call_at.assert_called_once()  # Wasn't called again.
+        self.loop.call_at.assert_not_called()
 
     async def test_bucket_drain_once(self):
         """Drains the bucket once, make sure it reschedules for next."""
@@ -473,3 +478,30 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
         self.set_time(2)  # Time just went backwards.
         with self.assertWarns(ResourceWarning):
             self.call_wakeup()
+
+    async def test_gh17(self):
+        """Test for GH-17, not scheduling wakeup after bucket is empty."""
+        self.add_waiter()
+        await self.advance_loop()
+        self.call_wakeup()
+        await self.advance_loop()
+        # Wakeup called, bucket is now empty again.
+
+        self.add_waiter()
+        self.add_waiter()
+        self.add_waiter()
+
+        # Bucket is full - this one is blocking in the background.
+        self.add_waiter()
+        self.set_time(10)
+        await self.advance_loop()
+
+        # One is waiting, rest finished
+        self.assert_finished(4)
+
+        # Wakeup again. GH-17 did not schedule a new wakeup.
+        self.call_wakeup()
+        await self.advance_loop()
+
+        # All done
+        self.assert_finished(5)

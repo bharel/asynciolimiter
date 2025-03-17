@@ -574,6 +574,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             self._locked = False
             self._level = level
             if level == 0:
+                self._wakeup_handle = None  # GH-17.
                 return
 
         time_to_next_drain = self._time_between_calls - leftover_time
