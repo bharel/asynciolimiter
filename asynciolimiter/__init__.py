@@ -51,7 +51,9 @@ __copyright__ = "Copyright (c) 2022 Bar Harel"
 _T = _TypeVar("_T")
 
 
-def _pop_pending(futures: _deque[_asyncio.Future]) -> Optional[_asyncio.Future]:
+def _pop_pending(
+    futures: _deque[_asyncio.Future],
+) -> Optional[_asyncio.Future]:
     """Pop until the first pending future is found and return it.
 
     If all futures are done, or deque is empty, return None.
