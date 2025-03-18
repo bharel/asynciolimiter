@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2025-03-18
+
+### 🚀 Features
+
+- Backport to Python 3.9+, patch by @pierresouchay (#22)
+
 ## [1.1.2] - 2025-03-17
 
 ### Fix
