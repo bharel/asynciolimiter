@@ -20,6 +20,8 @@ classifiers = [
     "Framework :: AsyncIO",
 
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -32,7 +34,7 @@ classifiers = [
     "Typing :: Typed"
 ]
 keywords = ["rate limiter", "asyncio", "throttling"]
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://github.com/bharel/asynciolimiter"
@@ -64,7 +66,7 @@ exclude = ["docs"]
 line-length = 79
 
 [tool.ruff.lint]
-ignore = ["PT", "S101"]
+ignore = ["PT", "S101", "FA100"]
 
 [tool.hatch.envs.dev]
 features = ["dev"]
