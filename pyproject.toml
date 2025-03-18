@@ -32,7 +32,7 @@ classifiers = [
     "Typing :: Typed"
 ]
 keywords = ["rate limiter", "asyncio", "throttling"]
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://github.com/bharel/asynciolimiter"

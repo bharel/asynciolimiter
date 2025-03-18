@@ -37,7 +37,7 @@ from abc import abstractmethod as _abstractmethod
 from collections import deque as _deque
 from collections.abc import Awaitable as _Awaitable
 from collections.abc import Callable as _Callable
-from typing import Any
+from typing import Any, Optional
 from typing import TypeVar as _TypeVar
 from typing import cast as _cast
 
@@ -51,7 +51,7 @@ __copyright__ = "Copyright (c) 2022 Bar Harel"
 _T = _TypeVar("_T")
 
 
-def _pop_pending(futures: _deque[_asyncio.Future]) -> _asyncio.Future | None:
+def _pop_pending(futures: _deque[_asyncio.Future]) -> Optional[_asyncio.Future]:
     """Pop until the first pending future is found and return it.
 
     If all futures are done, or deque is empty, return None.
@@ -163,7 +163,7 @@ class _CommonLimiterMixin(_BaseLimiter):
         super().__init__(*args, **kwargs)
         self._locked = False
         self._waiters: _deque[_asyncio.Future] = _deque()
-        self._wakeup_handle: _asyncio.TimerHandle | None = None
+        self._wakeup_handle: Optional[_asyncio.TimerHandle] = None
         self._breached = False
 
     async def wait(self) -> None:
@@ -318,9 +318,9 @@ class Limiter(_CommonLimiterMixin):
 
     def _schedule_wakeup(
         self,
-        at: float | None = None,
+        at: Optional[float] = None,
         *,
-        _loop: _asyncio.AbstractEventLoop | None = None,
+        _loop: Optional[_asyncio.AbstractEventLoop] = None,
     ) -> None:
         """Schedule the next wakeup to be unlocked.
 
@@ -496,9 +496,9 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
 
     def _schedule_wakeup(
         self,
-        at: float | None = None,
+        at: Optional[float] = None,
         *,
-        _loop: _asyncio.AbstractEventLoop | None = None,
+        _loop: Optional[_asyncio.AbstractEventLoop] = None,
     ) -> None:
         """Schedule the next wakeup to be unlocked.
 
