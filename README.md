@@ -7,7 +7,9 @@ A simple yet efficient Python AsyncIO rate limiter.
 [![codecov](https://codecov.io/gh/bharel/asynciolimiter/branch/master/graph/badge.svg?token=BJBL909NH3)](https://codecov.io/gh/bharel/asynciolimiter)
 
 ## Installation
-`pip install asynciolimiter`
+```
+pip install asynciolimiter
+```
 
 ## Sample Usage
 
