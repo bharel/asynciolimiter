@@ -13,6 +13,8 @@ This module provides different rate limiters for asyncio.
     - `StrictLimiter`: Limits by requests per second, without taking CPU or
     other process sleeps into account. There are no bursts and the resulting
     rate will always be a less than the set limit.
+    - `PeriodicCapacityLimiter`: Limits by a fixed capacity over a repeating
+    timeframe (e.g., 100 requests per minute).
 
 If you don't know which of these to choose, go for the regular Limiter.
 
@@ -27,12 +29,16 @@ The main method in each limiter is the wait(). For example:
     # Limit to, at most, 1 request every 10 seconds
     >>> limiter = StrictLimiter(1 / 10)
 
+    # Limit to 60 requests per minute, resetting on the minute
+    >>> limiter = PeriodicCapacityLimiter(60, 60)
+
 For more info, see the documentation for each limiter.
 """
 from __future__ import annotations
 
 import asyncio as _asyncio
 import functools as _functools
+import time as _time  # Import time module
 from abc import ABC as _ABC
 from abc import abstractmethod as _abstractmethod
 from collections import deque as _deque
@@ -40,14 +46,15 @@ from collections.abc import Awaitable as _Awaitable
 from collections.abc import Callable as _Callable
 from datetime import datetime as _datetime
 from datetime import timedelta as _timedelta
-from time import time as _time
+from datetime import timezone as _timezone # Import timezone
+# from time import time as _time # Original location, moved up
 from typing import Any as _Any
 from typing import Optional as _Optional
 from typing import TypeVar as _TypeVar
 from typing import cast as _cast
 
-__all__ = ["Limiter", "StrictLimiter", "LeakyBucketLimiter"]
 __version__ = "1.2.0"
+__all__ = ["Limiter", "StrictLimiter", "LeakyBucketLimiter", "PeriodicCapacityLimiter"]
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
@@ -107,10 +114,10 @@ class _BaseLimiter(_ABC):
     def reset(self) -> None:  # pragma: no cover # ABC
         """Reset the limiter.
 
-        This will cancel all waiting calls, reset all internal timers, and
+        This will cancel all waiting calls, reset all internal state/timers, and
         restore the limiter to its initial state.
-        Limiter is reusable afterwards, and the next call will be
-        immediately scheduled.
+        Limiter is reusable afterwards, and the next call may proceed according
+        to the limiter's logic (e.g., immediately if capacity is full).
         """
 
     def wrap(self, coro: _Awaitable[_T]) -> _Awaitable[_T]:
@@ -152,6 +159,23 @@ class _BaseLimiter(_ABC):
         return wrapper
 
 
+    def close(self) -> None: # pragma: no cover # Default implementation
+        """Close the limiter and clean up resources.
+
+        Default implementation calls cancel(). Subclasses should override
+        to cancel any specific timers or resources they manage.
+        Limiter is generally unusable afterwards.
+        """
+        self.cancel()
+
+    def __del__(self) -> None:
+        """Finalization. Clean up resources."""
+        # Ensure close is called if the object is garbage collected.
+        # Check if close has already been called to avoid double cleanup.
+        # hasattr check prevents errors if __init__ failed partially.
+        if hasattr(self, '_closed') and not self._closed:
+             self.close() # pragma: no cover # Difficult to reliably test GC
+
 class _CommonLimiterMixin(_BaseLimiter):
     """Some common attributes a limiter might need.
 
@@ -172,6 +196,7 @@ class _CommonLimiterMixin(_BaseLimiter):
         self._waiters: _deque[_asyncio.Future] = _deque()
         self._wakeup_handle: _Optional[_asyncio.TimerHandle] = None
         self._breached = False
+        self._closed = False # Add closed flag for __del__
 
     async def wait(self) -> None:
         if self._breached:
@@ -186,7 +211,9 @@ class _CommonLimiterMixin(_BaseLimiter):
 
     def cancel(self) -> None:
         while self._waiters:
-            self._waiters.popleft().cancel()
+            waiter = self._waiters.popleft()
+            if not waiter.done(): # Avoid cancelling already done futures
+                waiter.cancel()
 
     def breach(self) -> None:
         while self._waiters:
