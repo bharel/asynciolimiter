@@ -90,6 +90,7 @@ def _pop_pending(
 
 class _BaseLimiter(_ABC):
     """Base class for all limiters."""
+    _closed: bool = False
 
     @_abstractmethod
     async def wait(self) -> None:  # pragma: no cover # ABC
@@ -163,7 +164,7 @@ class _BaseLimiter(_ABC):
         _functools.update_wrapper(_wrapper, _cast(_Callable, coro))
         return wrapper
 
-    def close(self) -> None:  # pragma: no cover # Default implementation
+    def close(self) -> None:
         """Close the limiter and clean up resources.
 
         Default implementation calls cancel(). Subclasses should override
@@ -171,14 +172,14 @@ class _BaseLimiter(_ABC):
         Limiter is generally unusable afterwards.
         """
         self.cancel()
+        self._closed = True
 
     def __del__(self) -> None:
         """Finalization. Clean up resources."""
         # Ensure close is called if the object is garbage collected.
         # Check if close has already been called to avoid double cleanup.
-        # hasattr check prevents errors if __init__ failed partially.
-        if hasattr(self, "_closed") and not self._closed:
-            self.close()  # pragma: no cover # Difficult to reliably test GC
+        if not self._closed:
+            self.close()
 
 
 class _CommonLimiterMixin(_BaseLimiter):
@@ -201,7 +202,6 @@ class _CommonLimiterMixin(_BaseLimiter):
         self._waiters: _deque[_asyncio.Future] = _deque()
         self._wakeup_handle: _Optional[_asyncio.TimerHandle] = None
         self._breached = False
-        self._closed = False  # Add closed flag for __del__
 
     async def wait(self) -> None:
         if self._breached:
@@ -276,7 +276,7 @@ class _CommonLimiterMixin(_BaseLimiter):
 
         This will cancel all waiting calls. Limiter is unusable afterwards.
         """
-        if not getattr(self, "_closed", False):  # Prevent double close
+        if not self._closed:
             self.cancel()
             self._cancel_wakeup()
             self._closed = True  # Mark as closed
@@ -976,12 +976,10 @@ class PeriodicCapacityLimiter(_BaseLimiter):
 
     def cancel(self) -> None:
         """Cancel all waiting acquire futures."""
-        # Iterate through a copy in case cancel causes modifications indirectly
-        items = list(self._queue)
-        self._queue.clear()  # Clear original queue
-        for _amount, fut in items:
+        for _, fut in self._queue:
             if not fut.done():
                 fut.cancel()
+        self._queue.clear()
 
     def breach(self) -> None:
         """Waiting acquires will proceed immediately, ignoring capacity.
@@ -995,7 +993,7 @@ class PeriodicCapacityLimiter(_BaseLimiter):
         if self._closed:
             return
 
-        for _amount, fut in self._queue:
+        for _, fut in self._queue:
             if not fut.done():
                 fut.set_result(None)
 
@@ -1013,10 +1011,10 @@ class PeriodicCapacityLimiter(_BaseLimiter):
         if self._closed:
             return
 
-        self.cancel()  # Cancel pending futures
-        self._available = self.capacity  # Reset capacity
-        self._cancel_reset_timer()  # Stop the timer
-        self.breached = False  # Reset breach state
+        self.cancel()
+        self._available = self.capacity
+        self._cancel_reset_timer()
+        self.breached = False
 
     def _cancel_reset_timer(self) -> None:
         """Cancel the scheduled capacity reset timer if it's active."""

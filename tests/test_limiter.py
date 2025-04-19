@@ -5,7 +5,8 @@ from unittest import IsolatedAsyncioTestCase, skipUnless
 from unittest.mock import ANY, Mock, patch
 
 import asynciolimiter
-from asynciolimiter import LeakyBucketLimiter, Limiter, StrictLimiter
+from asynciolimiter import (LeakyBucketLimiter, Limiter,
+                            StrictLimiter, PeriodicCapacityLimiter)
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Awaitable
@@ -76,15 +77,20 @@ class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
         # Execute the callback (e.g., to release a waiting task)
         scheduled_callback()
 
-    def add_waiter(self) -> None:
-        """Create a task that waits on the limiter and track its completion."""
+    def add_waiter(self, *args, **kwargs) -> None:
+        """Create a task that waits on the limiter and track its completion.
+
+        Args:
+            *args: Positional arguments to pass to .wait().
+            **kwargs: Keyword arguments to pass to .wait().
+        """
 
         def _increment_finished_count(_: asyncio.Future) -> None:
             """Callback to count finished waiter tasks."""
             self.waiters_finished += 1
 
-        # Create a task that calls limiter.wait()
-        waiter_task = asyncio.create_task(self.limiter.wait())
+        # Create a task that calls limiter.wait() with provided arguments
+        waiter_task = asyncio.create_task(self.limiter.wait(*args, **kwargs))
         # Add a callback to track when the task completes
         waiter_task.add_done_callback(_increment_finished_count)
         self.waiters.append(waiter_task)
@@ -559,3 +565,12 @@ class LeakyBucketLimiterTestCase(CommonTestsMixin, IsolatedAsyncioTestCase):
 
         # All done
         self.assert_finished(5)
+
+
+class PeriodicCapacityLimiterTestCase(
+    CommonTestsMixin, PatchLoopMixin, IsolatedAsyncioTestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.limiter = PeriodicCapacityLimiter(1 / 3, capacity=3)
+
