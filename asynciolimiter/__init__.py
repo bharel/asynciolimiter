@@ -34,11 +34,12 @@ The main method in each limiter is the wait(). For example:
 
 For more info, see the documentation for each limiter.
 """
+
 from __future__ import annotations
 
 import asyncio as _asyncio
 import functools as _functools
-import time as _time  # Import time module
+import time as _time
 from abc import ABC as _ABC
 from abc import abstractmethod as _abstractmethod
 from collections import deque as _deque
@@ -46,15 +47,19 @@ from collections.abc import Awaitable as _Awaitable
 from collections.abc import Callable as _Callable
 from datetime import datetime as _datetime
 from datetime import timedelta as _timedelta
-from datetime import timezone as _timezone # Import timezone
-# from time import time as _time # Original location, moved up
+from datetime import timezone as _timezone  # Import timezone
 from typing import Any as _Any
 from typing import Optional as _Optional
 from typing import TypeVar as _TypeVar
 from typing import cast as _cast
 
 __version__ = "1.2.0"
-__all__ = ["Limiter", "StrictLimiter", "LeakyBucketLimiter", "PeriodicCapacityLimiter"]
+__all__ = [
+    "Limiter",
+    "StrictLimiter",
+    "LeakyBucketLimiter",
+    "PeriodicCapacityLimiter",
+]
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
@@ -158,8 +163,7 @@ class _BaseLimiter(_ABC):
         _functools.update_wrapper(_wrapper, _cast(_Callable, coro))
         return wrapper
 
-
-    def close(self) -> None: # pragma: no cover # Default implementation
+    def close(self) -> None:  # pragma: no cover # Default implementation
         """Close the limiter and clean up resources.
 
         Default implementation calls cancel(). Subclasses should override
@@ -173,8 +177,9 @@ class _BaseLimiter(_ABC):
         # Ensure close is called if the object is garbage collected.
         # Check if close has already been called to avoid double cleanup.
         # hasattr check prevents errors if __init__ failed partially.
-        if hasattr(self, '_closed') and not self._closed:
-             self.close() # pragma: no cover # Difficult to reliably test GC
+        if hasattr(self, "_closed") and not self._closed:
+            self.close()  # pragma: no cover # Difficult to reliably test GC
+
 
 class _CommonLimiterMixin(_BaseLimiter):
     """Some common attributes a limiter might need.
@@ -196,7 +201,7 @@ class _CommonLimiterMixin(_BaseLimiter):
         self._waiters: _deque[_asyncio.Future] = _deque()
         self._wakeup_handle: _Optional[_asyncio.TimerHandle] = None
         self._breached = False
-        self._closed = False # Add closed flag for __del__
+        self._closed = False  # Add closed flag for __del__
 
     async def wait(self) -> None:
         if self._breached:
@@ -212,7 +217,7 @@ class _CommonLimiterMixin(_BaseLimiter):
     def cancel(self) -> None:
         while self._waiters:
             waiter = self._waiters.popleft()
-            if not waiter.done(): # Avoid cancelling already done futures
+            if not waiter.done():  # Avoid cancelling already done futures
                 waiter.cancel()
 
     def breach(self) -> None:
@@ -271,8 +276,10 @@ class _CommonLimiterMixin(_BaseLimiter):
 
         This will cancel all waiting calls. Limiter is unusable afterwards.
         """
-        self.cancel()
-        self._cancel_wakeup()
+        if not getattr(self, "_closed", False):  # Prevent double close
+            self.cancel()
+            self._cancel_wakeup()
+            self._closed = True  # Mark as closed
 
 
 _EVENT_LOOP_FAST_WARNING = (
@@ -321,6 +328,13 @@ class Limiter(_CommonLimiterMixin):
             max_burst: In case there's a delay, schedule no more than this many
             calls at once.
         """
+        if rate <= 0:
+            msg = f"Rate must be positive, got {rate}"
+            raise ValueError(msg)
+        if max_burst <= 0:
+            msg = f"Max burst must be positive, got {max_burst}"
+            raise ValueError(msg)
+
         super().__init__()
         self._rate = rate
         self._time_between_calls = 1 / rate
@@ -328,7 +342,11 @@ class Limiter(_CommonLimiterMixin):
 
     def __repr__(self) -> str:
         cls = self.__class__
-        return f"{cls.__module__}.{cls.__qualname__}(rate={self._rate})"
+        return f"{
+            cls.__module__}.{
+            cls.__qualname__}(rate={
+            self._rate}, max_burst={
+                self.max_burst})"
 
     @property
     def rate(self) -> float:
@@ -342,6 +360,9 @@ class Limiter(_CommonLimiterMixin):
         Args:
             value: The rate (calls per second) at which calls can pass through.
         """
+        if value <= 0:
+            msg = f"Rate must be positive, got {value}"
+            raise ValueError(msg)
         self._rate = value
         self._time_between_calls = 1 / value
 
@@ -487,6 +508,13 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
             capacity: The capacity of the bucket. At full capacity calls to
             wait() will block until the bucket drips.
         """
+        if rate <= 0:
+            msg = f"Rate must be positive, got {rate}"
+            raise ValueError(msg)
+        if capacity <= 0:
+            msg = f"Capacity must be positive, got {capacity}"
+            raise ValueError(msg)
+
         super().__init__()
         self._rate = rate
         self._time_between_calls = 1 / rate
@@ -666,63 +694,128 @@ class StrictLimiter(_CommonLimiterMixin):
             self._wakeup_handle = None
 
 
-class PeriodicCapacityLimiter(_CommonLimiterMixin):
-    """A limiter with capacity that resets every `timeframe` seconds.
+_clock_info = _time.get_clock_info("time")
+_clock_resolution = _clock_info.resolution
+
+
+class PeriodicCapacityLimiter(_BaseLimiter):
+    """A limiter with capacity that resets every `timeframe`.
+
+    Allows a fixed number of requests (`capacity`) within a defined
+    `timeframe`.
+    The available capacity resets periodically.
+
+    Usage:
+        >>> # Allow 100 requests per minute, resetting on the minute
+        >>> limiter = PeriodicCapacityLimiter(100, 60)
+        >>> # Allow 10 requests every 5 seconds, relative to first request
+        >>> limiter = PeriodicCapacityLimiter(10, 5, use_wall_clock=False)
 
     Args:
         capacity: The maximum number of requests that can pass through
-        in a given timeframe.
-        timeframe: The timeframe in seconds (or timedelta).
-        Determines when the capacity resets.
-        use_wall_clock: If True, the limiter resets according to calendar
-        time (e.g., on the whole minute, hour, day, etc).
-        ordered: If True, the acquires will be made in order, otherwise they
-        are checked independently. Unordered is more efficient. The internal
-        algorithm will never lead to starvation, and in case of unordered will
-        attempt to maximize the capacity used.
+            in a given timeframe. Must be positive.
+        timeframe: The timeframe in seconds (int) or as a timedelta object.
+            Determines when the capacity resets. Must be positive.
+        use_wall_clock: If True (default), the limiter resets aligned with the
+            system's wall clock (e.g., resets occur on the whole minute,
+            hour, day). If False, the reset timer
+            starts when the first request arrives while the capacity is full,
+            and is scheduled for `timeframe` seconds.
+        ordered: If True (default), acquire attempts are processed strictly in
+            the order they arrive (FIFO), blocking if not enough capacity is
+            available for the next request. If False, it will attempt
+            maximizing capacity usage and queue requests that cannot be
+            processed immediately. Stagnation will never occur.
+
+    Attributes:
+        capacity: The configured capacity per timeframe.
+        timeframe: The configured timeframe duration for resets.
+        use_wall_clock: Whether resets align with the wall clock.
+        ordered: Whether requests are processed strictly FIFO.
     """
+
+    capacity: int
+    timeframe: _timedelta
+    use_wall_clock: bool
+    ordered: bool
+    breached: bool = False
+    """Whether the limiter has been breached."""
+
+    _min_amount_queued: float | int = float("inf")
+    """Minimum amount requested in the queue.
+
+    Used to determine if we can process more requests
+    without waiting for the next reset, and for optimizing
+    the processing of the queue."""
 
     def __init__(
         self,
         capacity: int,
-        timeframe: _timedelta | int = 1,
+        timeframe: _timedelta | float = 1,
         *,
         use_wall_clock: bool = True,
-        ordered: bool = True
+        ordered: bool = True,
     ) -> None:
-        super().__init__()
-        self.capacity = capacity
-        self.timeframe = (_timedelta(seconds=timeframe)
-                          if isinstance(timeframe, int) else timeframe)
-        if not isinstance(self.timeframe, _timedelta):
-            msg = f"Expected timedelta or int, got {type(timeframe)}"
-            raise TypeError(
-                msg
-            )
-        if self.timeframe.total_seconds() <= 0:
-            msg = f"Timeframe must be positive, got {self.timeframe}"
-            raise ValueError(
-                msg
-            )
-        if capacity <= 0:
-            msg = f"Capacity must be positive, got {capacity}"
-            raise ValueError(
-                msg
-            )
+        """Create a new limiter.
 
+        Args:
+            capacity: The maximum number of requests that can pass through
+                in a given timeframe.
+            timeframe: The timeframe in seconds or as a timedelta object.
+                Determines when the capacity resets. Defaults to 1 second.
+            use_wall_clock: If True (default), the limiter resets aligned with
+                the system's wall clock (e.g., resets occur on the whole
+                minute, hour, day). If False, the reset timer starts when the
+                first request arrives while the capacity is full, and is
+                scheduled for `timeframe` seconds.
+            ordered: If True (default), acquire attempts are processed strictly
+                in the order they arrive (FIFO), blocking if not enough
+                capacity is available for the next request. If False,
+                it will attempt maximizing capacity usage and queue
+                requests that cannot be processed immediately. Stagnation
+                will never occur.
+        """
+
+        if not isinstance(capacity, int) or capacity <= 0:
+            msg = f"Capacity must be a positive integer, got {capacity!r}"
+            raise ValueError(msg)
+
+        if isinstance(timeframe, (_timedelta)):
+            self.timeframe = timeframe
+        elif isinstance(timeframe, (int, float)):
+            self.timeframe = _timedelta(seconds=timeframe)
+        else:
+            msg = (
+                f"Expected timedelta, int, or float for timeframe, "
+                f"got {type(timeframe).__name__}"
+            )
+            raise TypeError(msg)
+
+        if self.timeframe.total_seconds() <= 0:
+            msg = f"Timeframe duration must be positive, got {self.timeframe}"
+            raise ValueError(msg)
+
+        self.capacity = capacity
         self.use_wall_clock = use_wall_clock
         self.ordered = ordered
+
         self._available = capacity
-        self._queue: _deque = _deque()  # Using deque instead of asyncio Queue
-        self._scheduled_reset_handle = None
+
+        # Queue stores tuples of (amount_requested, future_to_resolve)
+        self._queue: _deque[tuple[int, _asyncio.Future]] = _deque()
+        self._scheduled_reset_handle: _Optional[_asyncio.TimerHandle] = None
+        self._processing_handle: _Optional[_asyncio.Handle] = None
+        self._closed = False
 
     def __repr__(self) -> str:
         cls = self.__class__
-        return f"{
-            cls.__module__}.{
-            cls.__qualname__}(capacity={
-            self.capacity}, timeframe={
-                self.timeframe})"
+        return (
+            f"{cls.__module__}.{cls.__qualname__}("
+            f"capacity={self.capacity}, "
+            f"timeframe={self.timeframe}, "
+            f"use_wall_clock={self.use_wall_clock}, "
+            f"ordered={self.ordered})"
+        )
 
     async def wait(self, amount: int = 1) -> None:
         """Acquire capacity from the limiter.
@@ -730,95 +823,250 @@ class PeriodicCapacityLimiter(_CommonLimiterMixin):
         Waits until the specified amount of capacity is available.
 
         Args:
-            amount: The number of units to acquire. Defaults to 1.
+            amount: The number of units of capacity to acquire. Defaults to 1.
+                Must be a positive integer and not exceed the
+                limiter's total capacity.
         """
+        if self._closed:
+            msg = "Limiter is closed"
+            raise RuntimeError(msg)
+        if not isinstance(amount, int) or amount <= 0:
+            msg = f"Acquire amount must be a positive integer, got {amount!r}"
+            raise ValueError(msg)
+        if amount > self.capacity:
+            msg = (
+                f"Acquire amount ({amount}) cannot exceed "
+                f"limiter capacity ({self.capacity})"
+            )
+            raise ValueError(msg)
+
+        if self.breached:
+            return
+
         if self._scheduled_reset_handle is None:
             self._start_reset_timer()
 
-        # If there is enough capacity, proceed without waiting
-        if self._available >= amount:
+        if self._available >= amount and not (self.ordered and self._queue):
             self._available -= amount
             return
 
-        # Not enough capacity; queue this request
-        fut = _asyncio.get_running_loop().create_future()
+        # Not enough capacity or ordered requests are queued; create a
+        # future and add to the queue
+        loop = _asyncio.get_running_loop()
+        fut = loop.create_future()
         self._queue.append((amount, fut))
-        await fut
+
+        if self._min_amount_queued > amount:
+            self._min_amount_queued = amount
+
+        # Wait for the future to be resolved (either by reset or cancellation)
+        try:
+            await fut
+        except _asyncio.CancelledError:
+            if (not self._closed and self.ordered and self._queue
+                and self._queue[0][1] is fut
+                    and not self._processing_handle):
+                # If the future was cancelled and it is at the front,
+                # maybe the next one can be processed.
+                self._processing_handle = loop.call_soon(self._process_queue)
+            raise  # Re-raise the cancellation
 
     def _start_reset_timer(self) -> None:
-        """Start a timer to reset capacity periodically."""
-        if self.use_wall_clock:
-            # Reset according to calendar time (e.g., next minute, hour, etc.)
-            now = _time()  # Use time.time() to get the system's wall clock time
-            next_reset_time = (
-                now // self.timeframe.total_seconds() + 1) * self.timeframe.total_seconds()
-            delay_until_reset = next_reset_time - now
-        else:
-            # Reset every `timeframe` seconds relative to current time.
-            delay_until_reset = self.timeframe.total_seconds()
+        """Start or restart the timer to reset capacity periodically."""
+        if self._closed or self._scheduled_reset_handle is not None:
+            return
 
-        self._scheduled_reset_handle = _asyncio.get_running_loop().call_later(
+        loop = _asyncio.get_running_loop()
+        timeframe_seconds = self.timeframe.total_seconds()
+
+        if self.use_wall_clock:
+            now = _time.time()
+
+            current_interval_end = (
+                now // timeframe_seconds + 1
+            ) * timeframe_seconds
+
+            # Add the clock resolution to avoid early wakeup
+            current_interval_end += _clock_resolution * 2
+
+            delay_until_reset = max(
+                0, current_interval_end - now
+            )  # Ensure non-negative
+        else:
+            # Reset is relative to the first call that starts the timer
+            # The delay is simply the timeframe duration
+            delay_until_reset = timeframe_seconds
+
+        self._scheduled_reset_handle = loop.call_later(
             delay_until_reset, self._reset_capacity
         )
 
     def _reset_capacity(self) -> None:
-        """Reset the capacity and process pending requests."""
-        self._available = self.capacity  # Reset capacity
+        """Reset the available capacity and process any pending requests."""
+        # Clear the handle first thing
+        self._scheduled_reset_handle = None
+        if self._closed:
+            return  # Don't reset if closed
 
-        # Reset the timer before processing the queue
-        self._start_reset_timer()  # Re-schedule the reset in case the capacity gets exhausted
+        self._available = self.capacity  # Reset available capacity
 
-        # Process queued acquires
+        # If the queue is empty, the timer stops. It will be restarted
+        # by the next call to wait() if needed.
+        while self._queue:
+            if self._queue[0][1].done():
+                self._queue.popleft()
+            else:
+                break
+        else:
+            return
+
+        self._start_reset_timer()
         self._process_queue()
 
     def _process_queue(self) -> None:
-        """Process items in the queue based on available capacity."""
-        while self._queue and self._available > 0:
-            amount, fut = self._queue.popleft()  # Get from deque
-            if self._available >= amount:
-                self._available -= amount
+        if self._closed:
+            return  # Don't process if closed
+
+        self._processing_handle = None
+
+        available = self._available
+        queue = self._queue
+
+        if not queue:
+            # No requests in the queue; nothing to process
+            return
+
+        while queue:
+            amount, fut = queue.popleft()
+            if fut.done():
+                continue
+            if available >= amount:
+                # Enough capacity available; resolve the future
+                available -= amount
                 fut.set_result(None)
             else:
-                # Not enough capacity, re-queue the request
-                self._queue.appendleft((amount, fut))
+                # Not enough capacity; re-add to the queue and stop processing
+                queue.appendleft((amount, fut))
                 break
 
+        if (available > 0 and queue and not self.ordered and
+                self._min_amount_queued <= available):
+            # There are still requests in the queue and we have available
+            # capacity. Maybe we can process more.
+
+            # TODO: Optimize this to avoid O(N) complexity. We can do that
+            # using a Segment Tree combined with a list, but the code will
+            # be significantly more complex.
+            min_amount_queued = self._min_amount_queued
+            new_min_amount_queued = float("inf")
+            for amount, fut in queue:
+                if available >= amount and not fut.done():
+                    available -= amount
+                    fut.set_result(None)
+                    if available < min_amount_queued:
+                        # Will necessarily happen if available is 0.
+                        break
+                if new_min_amount_queued > amount:
+                    new_min_amount_queued = amount
+            else:
+                # We didn't break, so we necessarily went over the entire
+                # queue. We now know the min amount queued.
+                self._min_amount_queued = new_min_amount_queued
+        self._available = available
+
     def cancel(self) -> None:
-        """Cancel all waiting acquires."""
-        while self._queue:
-            amount, fut = self._queue.popleft()
-            fut.cancel()
+        """Cancel all waiting acquire futures."""
+        # Iterate through a copy in case cancel causes modifications indirectly
+        items = list(self._queue)
+        self._queue.clear()  # Clear original queue
+        for _amount, fut in items:
+            if not fut.done():
+                fut.cancel()
 
     def breach(self) -> None:
-        """Allow all waiting acquires to proceed regardless of capacity."""
-        while self._queue:
-            amount, fut = self._queue.popleft()
-            fut.set_result(None)
-        self._available = self.capacity
+        """Waiting acquires will proceed immediately, ignoring capacity.
+
+        All waiting calls will be let through, new `.wait()` calls will also
+        pass without waiting, until `.reset()` is called.
+
+        This is useful for testing or when you want to temporarily disable
+        the limiter's restrictions.
+        """
+        if self._closed:
+            return
+
+        for _amount, fut in self._queue:
+            if not fut.done():
+                fut.set_result(None)
+
+        self._queue.clear()
+
+        self.breached = True
 
     def reset(self) -> None:
-        """Reset the limiter's internal state."""
-        self.cancel()
-        self._available = self.capacity
-        self._cancel_reset_timer()
+        """Reset the limiter's state.
+
+        Cancels waiting requests, resets available capacity to full, and
+        stops and clears the reset timer. The timer will restart on the next
+        `wait()` call.
+        """
+        if self._closed:
+            return
+
+        self.cancel()  # Cancel pending futures
+        self._available = self.capacity  # Reset capacity
+        self._cancel_reset_timer()  # Stop the timer
+        self.breached = False  # Reset breach state
 
     def _cancel_reset_timer(self) -> None:
-        """Cancel the scheduled reset timer."""
+        """Cancel the scheduled capacity reset timer if it's active."""
         if self._scheduled_reset_handle is not None:
             self._scheduled_reset_handle.cancel()
             self._scheduled_reset_handle = None
 
     def close(self) -> None:
-        """Close the limiter and cancel all waiting acquires."""
-        self.cancel()
-        self._cancel_reset_timer()
+        """Close the limiter.
+
+        Cancels all waiting requests and stops the reset timer permanently.
+        The limiter becomes unusable.
+        """
+        if not self._closed:
+            self._closed = True
+            self.cancel()
+            self._cancel_reset_timer()
+            if self._processing_handle is not None:
+                self._processing_handle.cancel()
+                self._processing_handle = None
+
+    @property
+    def available(self) -> int:
+        """Return the currently available capacity in this timeframe."""
+        return self._available
 
     @property
     def next_reset(self) -> _Optional[_datetime]:
-        """Return the datetime of the next reset, or None."""
-        if self._scheduled_reset_handle is not None:
-            # Get the time at which the next reset is scheduled
-            scheduled_time = self._scheduled_reset_handle.when()
-            return _datetime.fromtimestamp(scheduled_time,
-                                           tz=_datetime.timezone.utc)
-        return None  # Return None if no reset is scheduled
+        """Approximate UTC datetime of the next scheduled capacity reset.
+
+        Returns None if the reset timer is not currently active (e.g., the
+        limiter is idle or has been closed).
+        The accuracy depends on the event loop's timer resolution and
+        `use_wall_clock`.
+        """
+        if self._scheduled_reset_handle is None:
+            return None
+
+        # Get the monotonic time at which the next reset is scheduled
+        loop = _asyncio.get_running_loop()
+        scheduled_mono_time = self._scheduled_reset_handle.when()
+
+        # Estimate wall clock time based on current diff between mono
+        # and wall
+        now_mono = loop.time()
+        now_wall = _time.time()
+        mono_to_wall_diff = now_wall - now_mono
+        scheduled_wall_time = scheduled_mono_time + mono_to_wall_diff
+
+        # Return as timezone-aware UTC datetime
+        return _datetime.fromtimestamp(
+            scheduled_wall_time, tz=_timezone.utc
+        )
