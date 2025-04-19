@@ -12,65 +12,119 @@ if typing.TYPE_CHECKING:  # pragma: no cover
 
 
 class PatchLoopMixin(IsolatedAsyncioTestCase):
-    """Patch the loop scheduling functions"""
+    """Patches asyncio loop functions for testing time-based behavior."""
 
     async def asyncSetUp(self) -> None:
+        """Set up the mock asyncio loop."""
         await super().asyncSetUp()
+
+        # Mock the asyncio module used by the limiter
         asyncio_mock = Mock(wraps=asyncio)
         patcher = patch("asynciolimiter._asyncio", asyncio_mock)
         patcher.start()
         self.addCleanup(patcher.stop)
+
+        # Create a simple object to act as the mock loop
         self.loop = SimpleNamespace()
         asyncio_mock.get_running_loop.return_value = self.loop
-        self.loop.time = Mock(return_value=0)
-        self.timer_handler = Mock()
+
+        # Mock loop time and scheduling functions
+        self.loop.time = Mock(return_value=0.0)
+        self.timer_handler = Mock()  # Mock the handle returned by call_at
         self.loop.call_at = Mock(return_value=self.timer_handler)
+
+        # Use the real loop's create_future for compatibility
         real_loop = asyncio.get_running_loop()
         self.loop.create_future = real_loop.create_future
 
-    def get_scheduled_functions(self):
-        return [call[0][1] for call in self.loop.call_at.call_args_list]
+    def get_scheduled_functions(self) -> list[typing.Callable]:
+        """Return a list of functions scheduled with loop.call_at."""
+        # call_args_list is a list of tuples, where each tuple is (args, kwargs)
+        # For call_at(when, callback, *args), the callback is args[1]
+        return [
+            mock_call.args[1] for mock_call in self.loop.call_at.call_args_list
+        ]
 
-    def get_scheduled_function(self):
+    def get_scheduled_function(self) -> typing.Callable:
+        """Return the most recently scheduled function."""
         return self.get_scheduled_functions()[-1]
 
-    def clear_scheduled_functions(self):
+    def clear_scheduled_functions(self) -> None:
+        """Reset the mock for loop.call_at."""
         self.loop.call_at.reset_mock()
 
 
 class CommonTestsMixin(PatchLoopMixin, IsolatedAsyncioTestCase):
+    """Provides common test utilities and assertions for limiter tests."""
+
     limiter: asynciolimiter._BaseLimiter
+    waiters: list[asyncio.Task]
+    waiters_finished: int
 
     def setUp(self) -> None:
+        """Initialize common test attributes."""
+        super().setUp()
         self.waiters_finished = 0
-        self.waiters: list[Awaitable] = []
-        return super().setUp()
+        self.waiters = []
 
-    def call_wakeup(self):
-        func = self.get_scheduled_function()
+    def call_wakeup(self) -> None:
+        """Execute the most recently scheduled timer callback."""
+        # Get the callback function scheduled by the limiter
+        scheduled_callback = self.get_scheduled_function()
+        # Clear the mock so we can assert future calls correctly
         self.clear_scheduled_functions()
-        func()
+        # Execute the callback (e.g., to release a waiting task)
+        scheduled_callback()
 
-    def add_waiter(self):
-        def cb(_):
+    def add_waiter(self) -> None:
+        """Create a task that waits on the limiter and track its completion."""
+
+        def _increment_finished_count(_: asyncio.Future) -> None:
+            """Callback to count finished waiter tasks."""
             self.waiters_finished += 1
 
-        task = asyncio.create_task(self.limiter.wait())
-        task.add_done_callback(cb)
-        self.waiters.append(task)
+        # Create a task that calls limiter.wait()
+        waiter_task = asyncio.create_task(self.limiter.wait())
+        # Add a callback to track when the task completes
+        waiter_task.add_done_callback(_increment_finished_count)
+        self.waiters.append(waiter_task)
 
-    def set_time(self, time: float):
+    def set_time(self, time: float) -> None:
+        """Set the mock loop's current time."""
         self.loop.time.return_value = time
 
-    def assert_call_at(self, time: float):
-        self.assertEqual(self.loop.call_at.call_args_list[-1][0][0], time)
+    def assert_call_at(self, expected_time: float) -> None:
+        """Assert the time argument of the most recent call_at."""
+        # Check the 'when' argument (index 0) of the last call
+        last_call_args = self.loop.call_at.call_args_list[-1][0]
+        actual_time = last_call_args[0]
+        self.assertEqual(
+            actual_time,
+            expected_time,
+            f"Expected call_at({expected_time}), got call_at({actual_time})",
+        )
 
-    async def advance_loop(self, count: int = 5):
-        for _ in range(count):
+    async def advance_loop(self, iterations: int = 5) -> None:
+        """Advance the event loop by yielding control multiple times.
+
+        This allows pending tasks and callbacks (like those scheduled with
+        call_at or futures completing) to be processed. Necessary when
+        testing interactions involving multiple steps in the event loop.
+
+        Args:
+            iterations: Number of times to yield control with asyncio.sleep(0).
+        """
+        for _ in range(iterations):
             await asyncio.sleep(0)
 
-    def assert_finished(self, count: int):
-        self.assertEqual(self.waiters_finished, count)
+    def assert_finished(self, expected_count: int) -> None:
+        """Assert the number of waiter tasks that have completed."""
+        self.assertEqual(
+            self.waiters_finished,
+            expected_count,
+            f"Expected {expected_count} finished waiters, "
+            f"found {self.waiters_finished}",
+        )
 
 
 class LimiterTestCase(
