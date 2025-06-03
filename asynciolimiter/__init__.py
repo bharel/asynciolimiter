@@ -37,6 +37,7 @@ from abc import abstractmethod as _abstractmethod
 from collections import deque as _deque
 from collections.abc import Awaitable as _Awaitable
 from collections.abc import Callable as _Callable
+from functools import partial as _partial
 from typing import Any, Optional
 from typing import TypeVar as _TypeVar
 from typing import cast as _cast
@@ -335,23 +336,24 @@ class Limiter(_CommonLimiterMixin):
         loop = _loop or _asyncio.get_running_loop()
         if at is None:
             at = loop.time() + self._time_between_calls
-        self._wakeup_handle = loop.call_at(at, self._wakeup)
+        # Bind the loop to the wakeup function
+        self._wakeup_handle = loop.call_at(at, _partial(self._wakeup, loop))
         # Saving next wakeup and not this wakeup to account for fractions
         # of rate passed. See leftover_time under _wakeup.
         self._next_wakeup = at
 
-    def _wakeup(self) -> None:
+    def _unlock(self) -> None:
+        # Prevent creating new block of _unlock with every separate _wakeup call
+        self._wakeup_handle = None
+        self._locked = False
+
+    def _wakeup(self, loop: Optional[_asyncio.AbstractEventLoop]) -> None:
         """Advance the limiter counters once."""
-
-        def _unlock() -> None:
-            self._wakeup_handle = None
-            self._locked = False
-
-        loop = _asyncio.get_running_loop()
         waiters = self._waiters
         # Short circuit if there are no waiters
         if not waiters:
-            _unlock()
+            # Use the object level unlock
+            self._unlock()
             return
 
         this_wakeup = self._next_wakeup
@@ -395,7 +397,7 @@ class Limiter(_CommonLimiterMixin):
         # All of the waiters were cancelled or we missed wakeups and we're out
         # of waiters. Free to accept traffic.
         if to_wakeup:
-            _unlock()
+            self._unlock()
 
         # If we still have waiters, we need to schedule the next wakeup.
         # If we're out of waiters we still need to wait before
@@ -513,7 +515,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         loop = _loop or _asyncio.get_running_loop()
         if at is None:
             at = loop.time() + self._time_between_calls
-        self._wakeup_handle = loop.call_at(at, self._wakeup)
+        self._wakeup_handle = loop.call_at(at, _partial(self._wakeup, loop))
         self._next_wakeup = at
 
     def reset(self) -> None:
@@ -527,11 +529,10 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
         super().reset()
         self._level = 0
 
-    def _wakeup(self) -> None:
+    def _wakeup(self, loop: Optional[_asyncio.AbstractEventLoop]) -> None:
         """Drain the bucket at least once. Wakeup waiters if there are any."""
-        loop = _asyncio.get_running_loop()
-        this_wakeup = self._next_wakeup
         current_time = loop.time()
+        this_wakeup = self._next_wakeup
 
         # We woke up early. Damn event loop!
         if current_time < this_wakeup:
@@ -580,7 +581,7 @@ class LeakyBucketLimiter(_CommonLimiterMixin):
                 return
 
         time_to_next_drain = self._time_between_calls - leftover_time
-        self._schedule_wakeup(at=current_time + time_to_next_drain)
+        self._schedule_wakeup(at=current_time + time_to_next_drain, _loop=loop)
 
 
 class StrictLimiter(_CommonLimiterMixin):
@@ -616,19 +617,21 @@ class StrictLimiter(_CommonLimiterMixin):
         self._locked = True
         self._schedule_wakeup()
 
-    def _schedule_wakeup(self) -> None:
+    def _schedule_wakeup(
+        self, *, _loop: Optional[_asyncio.AbstractEventLoop] = None
+    ) -> None:
         """Schedule the next wakeup to be unlocked."""
-        loop = _asyncio.get_running_loop()
+        loop = _loop or _asyncio.get_running_loop()
         self._wakeup_handle = loop.call_at(
-            loop.time() + 1 / self.rate, self._wakeup
+            loop.time() + 1 / self.rate, _partial(self._wakeup, loop)
         )
 
-    def _wakeup(self) -> None:
+    def _wakeup(self, loop: Optional[_asyncio.AbstractEventLoop]) -> None:
         """Wakeup a single waiter if there is any, otherwise unlock."""
         waiter = _pop_pending(self._waiters)
         if waiter is not None:
             waiter.set_result(None)
-            self._schedule_wakeup()
+            self._schedule_wakeup(_loop=loop)
         else:
             self._locked = False
             self._wakeup_handle = None
