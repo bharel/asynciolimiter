@@ -29,9 +29,11 @@ The main method in each limiter is the wait(). For example:
 
 For more info, see the documentation for each limiter.
 """
+from __future__ import annotations as _annotations
 
 import asyncio as _asyncio
 import functools as _functools
+import sys as _sys
 from abc import ABC as _ABC
 from abc import abstractmethod as _abstractmethod
 from collections import deque as _deque
@@ -41,13 +43,19 @@ from typing import Any, Optional
 from typing import TypeVar as _TypeVar
 from typing import cast as _cast
 
+if _sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec as _ParamSpec
+else:
+    from typing import ParamSpec as _ParamSpec
+
+
 __all__ = ["Limiter", "StrictLimiter", "LeakyBucketLimiter"]
 __version__ = "1.2.0"
 __author__ = "Bar Harel"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) 2022 Bar Harel"
 
-
+_P = _ParamSpec("_P")
 _T = _TypeVar("_T")
 
 
@@ -110,7 +118,7 @@ class _BaseLimiter(_ABC):
 
     def wrap(self, coro: _Awaitable[_T]) -> _Awaitable[_T]:
         """Wrap a coroutine with the limiter.
-
+    
         Returns a new coroutine that waits for the limiter to be unlocked, and
         then schedules the original coroutine.
 
@@ -145,6 +153,34 @@ class _BaseLimiter(_ABC):
         wrapper = _wrapper()
         _functools.update_wrapper(_wrapper, _cast(_Callable, coro))
         return wrapper
+    
+    
+    
+    async def wrap_func(self, coro:_Callable[_P, _Awaitable[_T]]) -> _Callable[_P, _Awaitable[_T]]:
+        """wraps an asynchronous function to the limiter
+        
+        Example use:
+
+            >>> limiter = Limiter(1)
+
+            >>> @limiter.wrap_func
+            >>> async def foo(number):
+            ...     print(number)  # Do stuff
+
+            >>> async def main():    
+            ...     # This will print the numbers over 10 seconds
+            ...     await asyncio.gather(*(foo(i) for i in range(10)))
+
+        """
+
+        async def _wrapper(*args:_P.args, **kwargs:_P.kwargs) -> _T:
+            await self.wait()
+            return await coro(*args, **kwargs)
+        
+        _functools.update_wrapper(_wrapper, coro)
+        return _wrapper
+
+
 
 
 class _CommonLimiterMixin(_BaseLimiter):
